@@ -55,6 +55,23 @@ describe('resolveJwtSecret', () => {
             });
         });
 
+        it('refuses the placeholder shipped in .env.example', () => {
+            // Long enough to pass the length check, so it must be caught by name.
+            expect(() =>
+                prod('your-super-secret-jwt-key-change-this-in-production-123456789'),
+            ).toThrow(/placeholder/);
+        });
+
+        it('refuses a lightly-edited template value', () => {
+            expect(() => prod('my-secret-change-this-later-abcdef')).toThrow(/placeholder/);
+            expect(() => prod('your-secret-value-goes-here-xyz')).toThrow(/placeholder/);
+        });
+
+        it('still accepts a genuinely random secret of adequate length', () => {
+            const random = 'f3a9c1d84b7e2065aa1f9e4c7d3b8e50';
+            expect(prod(random)).toBe(random);
+        });
+
         it('refuses a secret shorter than 16 characters', () => {
             expect(() => prod('short')).toThrow(/16 characters/);
             expect(() => prod('a'.repeat(15))).toThrow(/16 characters/);

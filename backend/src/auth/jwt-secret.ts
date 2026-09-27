@@ -22,7 +22,18 @@ const PLACEHOLDER_SECRETS = [
     'changeme',
     'change-me',
     'jwt-secret',
+    // The literal shipped in backend/.env.example. It is long enough to pass the
+    // length check, so without this a deployment that copied the template
+    // verbatim would be signing tokens with a value published in this repo --
+    // exactly the failure this module exists to prevent.
+    'your-super-secret-jwt-key-change-this-in-production-123456789',
 ];
+
+/**
+ * Substring markers that give away a template value. Caught in addition to the
+ * exact list above, so a lightly-edited placeholder is still rejected.
+ */
+const PLACEHOLDER_MARKERS = ['change-this', 'change-me', 'changeme', 'your-secret', 'yoursecret'];
 
 const MIN_SECRET_LENGTH = 16;
 
@@ -56,7 +67,11 @@ export function resolveJwtSecret(
 }
 
 function isPlaceholder(secret: string): boolean {
-    return PLACEHOLDER_SECRETS.includes(secret.toLowerCase());
+    const normalised = secret.toLowerCase();
+    return (
+        PLACEHOLDER_SECRETS.includes(normalised) ||
+        PLACEHOLDER_MARKERS.some((marker) => normalised.includes(marker))
+    );
 }
 
 /**
