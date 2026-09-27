@@ -195,5 +195,54 @@ export async function getTopItems(shopId: string, limit: number = 10) {
     return res.json();
 }
 
+// ==================== SUPER ADMIN ====================
+
+export interface PlatformAnalytics {
+    range: { days: number; from: string; to: string };
+    totals: {
+        orders: number;
+        revenue: number;
+        avgOrderValue: number;
+        customers: number;
+        totalCafes: number;
+        activeCafes: number;
+    };
+    growth: {
+        orders: number;
+        revenue: number;
+        avgOrderValue: number;
+        customers: number;
+        cafes: number;
+    };
+    timeseries: { date: string; orders: number; revenue: number }[];
+    topCafes: { id: string; name: string; slug: string; orders: number; revenue: number }[];
+    sourceMix: { key: string; orders: number; revenue: number }[];
+    paymentMix: { key: string; orders: number; revenue: number }[];
+    hourly: { hour: number; orders: number; revenue: number }[];
+}
+
+export async function getPlatformAnalytics(days: number = 30): Promise<PlatformAnalytics> {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/analytics?days=${days}`);
+    if (!res.ok) throw new Error('Failed to fetch platform analytics');
+    return res.json();
+}
+
+export interface PlatformStats {
+    mrr: number;
+    mrrGrowth: number;
+    totalCafes: number;
+    cafeGrowth: number;
+    activeUsers: number;
+    userGrowth: number;
+    ordersToday: number;
+    orderGrowth: number;
+}
+
+export async function getPlatformStats(): Promise<PlatformStats> {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/platform-stats`);
+    if (!res.ok) throw new Error('Failed to fetch platform stats');
+    return res.json();
+}
+
 // Export API URL for WebSocket connections
 export { API_URL };
