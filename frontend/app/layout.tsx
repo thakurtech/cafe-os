@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
+import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: "CaféOS - Complete Cafe Management System",
@@ -17,6 +18,7 @@ export default function RootLayout({
       <body className="antialiased font-sans">
         <AuthProvider>
           {children}
+          <Toaster />
         </AuthProvider>
       </body>
     </html>

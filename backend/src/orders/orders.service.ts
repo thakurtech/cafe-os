@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaService } from '../prisma.service';
@@ -148,8 +148,8 @@ export class OrdersService {
         });
     }
 
-    findOne(id: string) {
-        return this.prisma.order.findUnique({
+    async findOne(id: string) {
+        const order = await this.prisma.order.findUnique({
             where: { id },
             include: {
                 items: {
@@ -157,6 +157,14 @@ export class OrdersService {
                 },
             },
         });
+
+        // findUnique returns null for a missing row, which Nest serialises as an
+        // empty 200. An unknown order id is a 404.
+        if (!order) {
+            throw new NotFoundException('Order not found');
+        }
+
+        return order;
     }
 
     update(id: string, updateOrderDto: UpdateOrderDto) {
@@ -245,11 +253,11 @@ export class OrdersService {
         });
 
         if (!order) {
-            throw new Error('Order not found');
+            throw new NotFoundException('Order not found');
         }
 
         if (!['PENDING', 'HELD'].includes(order.status)) {
-            throw new Error('Order cannot be modified after it starts preparing');
+            throw new BadRequestException('Order cannot be modified after it starts preparing');
         }
 
         // Delete existing items
@@ -300,7 +308,7 @@ export class OrdersService {
 
     async createRefund(orderId: string, amount: number, reason: string, refundedBy: string, type: string) {
         const order = await this.prisma.order.findUnique({ where: { id: orderId } });
-        if (!order) throw new Error('Order not found');
+        if (!order) throw new NotFoundException('Order not found');
 
         const refund = await this.prisma.refund.create({
             data: {

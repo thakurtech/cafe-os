@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
+// Payout states, as the super admin side (super-admin/affiliates.service.ts) writes them.
+const PAYOUT_PENDING = 'PENDING';
+const PAYOUT_PAID = 'PAID';
+
 @Injectable()
 export class AffiliateService {
     constructor(private prisma: PrismaService) { }
@@ -8,7 +12,10 @@ export class AffiliateService {
     async getStats(userId: string) {
         const affiliate = await this.prisma.affiliateAccount.findUnique({
             where: { userId },
-            include: { referrals: true },
+            include: {
+                referrals: true,
+                payouts: { select: { amount: true, status: true, createdAt: true } },
+            },
         });
 
         if (!affiliate) {
@@ -16,19 +23,37 @@ export class AffiliateService {
         }
 
         const activeReferrals = affiliate.referrals.filter(r => r.status === 'ACTIVE').length;
-        const totalEarnings = affiliate.balance; // In a real app, calculate from Payouts + Pending
 
-        // Mocking next payout for demo
-        const nextPayoutDate = new Date();
-        nextPayoutDate.setDate(nextPayoutDate.getDate() + 30);
+        // Settled payouts are the only money that actually reached the affiliate.
+        // Rejected ones never will, and pending ones have not yet.
+        const totalEarnings = this.round(this.sumPayouts(affiliate.payouts, PAYOUT_PAID));
+
+        const pendingPayouts = affiliate.payouts.filter(p => p.status === PAYOUT_PENDING);
+        const pendingAmount = this.round(this.sumPayouts(affiliate.payouts, PAYOUT_PENDING));
+
+        // The payout that settles next is the oldest request still awaiting approval;
+        // with nothing pending there is no date to promise, so it stays null.
+        const oldestPending = pendingPayouts.reduce<Date | null>(
+            (oldest, payout) =>
+                oldest === null || payout.createdAt < oldest ? payout.createdAt : oldest,
+            null,
+        );
 
         return {
             totalEarnings,
             activeCafes: activeReferrals,
             commissionRate: affiliate.commissionRate,
             nextPayout: {
-                amount: activeReferrals * affiliate.commissionRate,
-                date: nextPayoutDate,
+                // What is already requested and waiting on the super admin.
+                amount: pendingAmount,
+                // When that request was raised, rather than a made-up schedule.
+                // Null when nothing is pending: there is no date to promise.
+                date: oldestPending,
+                // Unpaid balance on the account. Approving a payout decrements the
+                // balance, so anything already requested is still counted here until
+                // it is settled.
+                claimable: this.round(affiliate.balance),
+                pendingCount: pendingPayouts.length,
             },
             referralCode: affiliate.code,
         };
@@ -85,5 +110,16 @@ export class AffiliateService {
         });
 
         return { success: true, shopId: shop.id, message: 'Cafe onboarded successfully' };
+    }
+
+    private sumPayouts(payouts: { amount: number; status: string }[], status: string): number {
+        return payouts
+            .filter(payout => payout.status === status)
+            .reduce((sum, payout) => sum + payout.amount, 0);
+    }
+
+    private round(value: number, decimals = 2): number {
+        const factor = 10 ** decimals;
+        return Math.round(value * factor) / factor;
     }
 }

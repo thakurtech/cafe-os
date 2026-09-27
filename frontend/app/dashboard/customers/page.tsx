@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { SearchIcon, Download, MoreHorizontal, MessageCircle, Star } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { SearchIcon, Download, MoreHorizontal, MessageCircle, Star, RefreshCw, AlertTriangle } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,24 +14,144 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useAuth, useShop } from "@/lib/auth-context";
+import { getOrders, type ShopOrder } from "@/lib/api";
+
+type Segment = "VIP" | "Active" | "New" | "At Risk" | "Dormant";
+
+interface CustomerRow {
+  id: string;
+  name: string;
+  phone: string;
+  orders: number;
+  spent: number;
+  lastVisit: string;
+  lastVisitAt: number;
+  /**
+   * Loyalty points are intentionally null: nothing in the orders payload carries
+   * them (see the note on deriving this list below).
+   */
+  points: number | null;
+  segment: Segment;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function segmentFor(orderCount: number, spent: number, lastVisitAt: number): Segment {
+  const daysSinceVisit = (Date.now() - lastVisitAt) / DAY_MS;
+  if (daysSinceVisit > 60) return "Dormant";
+  if (daysSinceVisit > 21) return "At Risk";
+  if (spent >= 10000 || orderCount >= 20) return "VIP";
+  if (orderCount <= 2) return "New";
+  return "Active";
+}
+
+/**
+ * Builds the CRM list from the shop's orders.
+ *
+ * This is a client-side derivation because the backend has no customers
+ * endpoint: `GET /orders?shopId=` is the only shop-scoped source that carries
+ * customer records (it includes the related `customer` user), and the loyalty
+ * controller only exposes `/loyalty/stats` for the *signed-in* user plus a
+ * global `/loyalty/leaderboard` — neither can list a shop's customers.
+ *
+ * A dedicated `GET /shops/:id/customers` endpoint would be better because:
+ *  - it could join LoyaltyProfile, so the loyalty points column would hold real
+ *    values instead of the "—" placeholder rendered below;
+ *  - aggregation (order counts, lifetime spend, last visit) belongs in SQL —
+ *    doing it here means downloading every order the shop has ever taken and
+ *    re-summing it in the browser on every page view;
+ *  - it could paginate, search and segment server-side, which this page cannot
+ *    do correctly while it only sees whatever orders fit in one response;
+ *  - walk-in orders have no customerId at all, so those diners are invisible
+ *    here and the totals silently under-count them.
+ */
+function deriveCustomers(orders: ShopOrder[]): CustomerRow[] {
+  const byCustomer = new Map<string, { customer: NonNullable<ShopOrder["customer"]>; orders: number; spent: number; lastVisitAt: number }>();
+
+  for (const order of orders) {
+    // Guest / walk-in orders carry no customer record — skip them.
+    if (!order.customer) continue;
+    // Cancelled and refunded orders should not inflate lifetime spend.
+    if (order.status === "CANCELLED" || order.paymentStatus === "REFUNDED") continue;
+
+    const createdAt = new Date(order.createdAt).getTime();
+    const existing = byCustomer.get(order.customer.id);
+    if (existing) {
+      existing.orders += 1;
+      existing.spent += order.totalAmount;
+      existing.lastVisitAt = Math.max(existing.lastVisitAt, createdAt);
+    } else {
+      byCustomer.set(order.customer.id, {
+        customer: order.customer,
+        orders: 1,
+        spent: order.totalAmount,
+        lastVisitAt: createdAt,
+      });
+    }
+  }
+
+  return Array.from(byCustomer.values())
+    .map(({ customer, orders: orderCount, spent, lastVisitAt }) => ({
+      id: customer.id,
+      name: customer.name || "Guest",
+      phone: customer.phone || "—",
+      orders: orderCount,
+      spent: Math.round(spent),
+      lastVisit: Number.isFinite(lastVisitAt)
+        ? formatDistanceToNow(new Date(lastVisitAt), { addSuffix: true })
+        : "—",
+      lastVisitAt,
+      points: null,
+      segment: segmentFor(orderCount, spent, lastVisitAt),
+    }))
+    .sort((a, b) => b.spent - a.spent);
+}
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState<any[]>([]);
+  // shopId follows the pattern used by the other dashboard pages: the shop from
+  // auth context (hydrated from the `shop_data` localStorage key), falling back
+  // to the shopId carried on the logged-in user.
+  const { user, loading: authLoading } = useAuth();
+  const shop = useShop();
+  const shopId = shop?.id ?? user?.shopId;
+
+  const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+
+  const loadCustomers = useCallback(async () => {
+    if (!shopId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const data: ShopOrder[] = await getOrders(shopId);
+      setCustomers(deriveCustomers(Array.isArray(data) ? data : []));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load customers");
+    } finally {
+      setLoading(false);
+    }
+  }, [shopId]);
 
   useEffect(() => {
-    // Mock fetch
-    setTimeout(() => {
-      setCustomers([
-        { id: '1', name: 'Rahul Kumar', phone: '+91 9876543210', orders: 12, spent: 4500, lastVisit: '2 days ago', points: 450, segment: 'Active' },
-        { id: '2', name: 'Priya Sharma', phone: '+91 9876543211', orders: 2, spent: 750, lastVisit: '1 day ago', points: 75, segment: 'New' },
-        { id: '3', name: 'Amit Singh', phone: '+91 9876543212', orders: 25, spent: 12400, lastVisit: '4 hours ago', points: 1240, segment: 'VIP' },
-        { id: '4', name: 'Neha Gupta', phone: '+91 9876543213', orders: 5, spent: 1800, lastVisit: '3 weeks ago', points: 180, segment: 'At Risk' },
-        { id: '5', name: 'Vikram Patel', phone: '+91 9876543214', orders: 8, spent: 2900, lastVisit: '2 months ago', points: 290, segment: 'Dormant' },
-      ]);
+    if (authLoading) return;
+    if (!shopId) {
       setLoading(false);
-    }, 500);
-  }, []);
+      setError("No shop is linked to this account. Sign in again to continue.");
+      return;
+    }
+    loadCustomers();
+  }, [authLoading, shopId, loadCustomers]);
+
+  const visibleCustomers = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return customers;
+    return customers.filter((customer) =>
+      `${customer.name} ${customer.phone}`.toLowerCase().includes(needle),
+    );
+  }, [customers, query]);
 
   const getSegmentColor = (segment: string) => {
     switch(segment) {
@@ -50,15 +171,25 @@ export default function CustomersPage() {
           <h2 className="text-3xl font-bold tracking-tight text-slate-900">Customers CRM</h2>
           <p className="text-slate-500">Track loyalty, order history, and engage with your diners.</p>
         </div>
-        <Button variant="outline">
-          <Download className="mr-2 h-4 w-4" /> Export CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={loadCustomers} disabled={loading || !shopId}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+          </Button>
+          <Button variant="outline">
+            <Download className="mr-2 h-4 w-4" /> Export CSV
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-center">
         <div className="relative flex-1">
           <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-          <Input className="pl-9 bg-white" placeholder="Search by name or phone number..." />
+          <Input
+            className="pl-9 bg-white"
+            placeholder="Search by name or phone number..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </div>
         <Button variant="outline" className="bg-white">Segment: All</Button>
       </div>
@@ -83,7 +214,29 @@ export default function CustomersPage() {
                   <div className="inline-block animate-spin w-6 h-6 border-4 border-emerald-500 border-t-transparent rounded-full" />
                 </TableCell>
               </TableRow>
-            ) : customers.map((customer) => (
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-32 text-center">
+                  <div className="flex flex-col items-center gap-3 text-slate-600">
+                    <AlertTriangle className="h-6 w-6 text-orange-500" />
+                    <p className="text-sm">{error}</p>
+                    {shopId && (
+                      <Button variant="outline" size="sm" onClick={loadCustomers}>
+                        <RefreshCw className="mr-2 h-4 w-4" /> Try again
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : visibleCustomers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                  {customers.length === 0
+                    ? "No customers yet. Diners appear here once they place an order with an account."
+                    : "No customers match your search."}
+                </TableCell>
+              </TableRow>
+            ) : visibleCustomers.map((customer) => (
               <TableRow key={customer.id} className="hover:bg-slate-50 cursor-pointer">
                 <TableCell>
                   <div className="font-medium text-slate-900">{customer.name}</div>
@@ -95,7 +248,16 @@ export default function CustomersPage() {
                 <TableCell>
                   <div className="flex items-center">
                     <Star className="w-3 h-3 text-yellow-500 mr-1 fill-yellow-500" />
-                    <span className="font-medium">{customer.points}</span>
+                    <span
+                      className="font-medium"
+                      title={
+                        customer.points === null
+                          ? "Loyalty points need a shop customers endpoint that joins the loyalty profile"
+                          : undefined
+                      }
+                    >
+                      {customer.points ?? "—"}
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -116,10 +278,12 @@ export default function CustomersPage() {
           </TableBody>
         </Table>
       </div>
-      
+
       <div className="flex items-center justify-between">
         <div className="text-sm text-slate-500">
-          Showing 1 to 5 of 5 entries
+          {visibleCustomers.length === 0
+            ? "Showing 0 entries"
+            : `Showing 1 to ${visibleCustomers.length} of ${visibleCustomers.length} entries`}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" disabled>Previous</Button>

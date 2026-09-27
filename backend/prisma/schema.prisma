@@ -13,7 +13,11 @@ model User {
   phone            String            @unique
   name             String?
   email            String?           @unique
-  password         String            @default("$2b$10$EpRnTzVlqHNP0.fUbXUwSOal5wAllaRpTp.1x3/EnsPawL.9v.que")
+  /// Placeholder hash for rows created without a password (e.g. storefront
+  /// customers). Hashed from a random secret that was discarded, so no known
+  /// plaintext authenticates against it. The previous default was a hash of a
+  /// guessable password shared by every such row.
+  password         String            @default("$2b$10$pov2GhANA6qaColffv.8Ue.Q6QwWSklMBuBhYwG7NyB0RvSaoS0aa")
   role             Role              @default(CUSTOMER)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
@@ -56,30 +60,31 @@ model Shop {
   users             User[]
   tables            Table[]
   games             Game[]
+  supportTickets    SupportTicket[]
 }
 
 model Subscription {
-  id                String             @id @default(uuid())
-  shopId            String             @unique
-  plan              String             @default("STARTER") // STARTER, GROWTH, PRO
-  status            SubscriptionStatus @default(TRIAL)
-  trialEndsAt       DateTime?
-  currentPeriodEnd  DateTime?
-  razorpaySubId     String?
-  priceMonthly      Int                @default(499)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  shop              Shop               @relation(fields: [shopId], references: [id])
+  id               String             @id @default(uuid())
+  shopId           String             @unique
+  plan             String             @default("STARTER") // STARTER, GROWTH, PRO
+  status           SubscriptionStatus @default(TRIAL)
+  trialEndsAt      DateTime?
+  currentPeriodEnd DateTime?
+  razorpaySubId    String?
+  priceMonthly     Int                @default(499)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  shop             Shop               @relation(fields: [shopId], references: [id])
 }
 
 model Table {
   id        String      @id @default(uuid())
   shopId    String
-  name      String      // e.g. "Table 1", "Counter", "Outdoor A"
+  name      String // e.g. "Table 1", "Counter", "Outdoor A"
   capacity  Int         @default(4)
   status    TableStatus @default(AVAILABLE)
-  qrCode    String?     // URL to QR image or just the path
-  position  Json?       // {x, y} for floor plan
+  qrCode    String? // URL to QR image or just the path
+  position  Json? // {x, y} for floor plan
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   shop      Shop        @relation(fields: [shopId], references: [id])
@@ -105,7 +110,7 @@ model MenuItem {
   categoryId      String
   popularityScore Float           @default(0)
   margin          Float           @default(0)
-  taxRate         Float           @default(0)  // e.g. 0.05 for 5% GST
+  taxRate         Float           @default(0) // e.g. 0.05 for 5% GST
   isVeg           Boolean         @default(true)
   category        MenuCategory    @relation(fields: [categoryId], references: [id])
   modifiers       ModifierGroup[]
@@ -132,33 +137,33 @@ model ModifierOption {
 }
 
 model Order {
-  id             String        @id @default(uuid())
-  shortId        String
-  shopId         String
-  customerId     String?
-  status         OrderStatus   @default(PENDING)
-  source         OrderSource   @default(POS)
-  totalAmount    Float
-  subtotal       Float         @default(0)
-  taxAmount      Float         @default(0)
-  discountAmount Float         @default(0)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  paymentMethod  PaymentMethod @default(CASH)
-  paymentStatus  String        @default("PENDING")
-  paidAt         DateTime?
-  discountCode   String?
-  tableNumber    String?
-  tableId        String?
-  notes          String?
-  cashierId      String?
-  razorpayOrderId String?
+  id                String        @id @default(uuid())
+  shortId           String
+  shopId            String
+  customerId        String?
+  status            OrderStatus   @default(PENDING)
+  source            OrderSource   @default(POS)
+  totalAmount       Float
+  subtotal          Float         @default(0)
+  taxAmount         Float         @default(0)
+  discountAmount    Float         @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  paymentMethod     PaymentMethod @default(CASH)
+  paymentStatus     String        @default("PENDING")
+  paidAt            DateTime?
+  discountCode      String?
+  tableNumber       String?
+  tableId           String?
+  notes             String?
+  cashierId         String?
+  razorpayOrderId   String?
   razorpayPaymentId String?
-  attribution    Attribution?
-  customer       User?         @relation(fields: [customerId], references: [id])
-  shop           Shop          @relation(fields: [shopId], references: [id])
-  items          OrderItem[]
-  refunds        Refund[]
+  attribution       Attribution?
+  customer          User?         @relation(fields: [customerId], references: [id])
+  shop              Shop          @relation(fields: [shopId], references: [id])
+  items             OrderItem[]
+  refunds           Refund[]
 }
 
 model OrderItem {
@@ -177,15 +182,15 @@ model OrderItem {
 }
 
 model Refund {
-  id          String   @id @default(uuid())
-  orderId     String
-  amount      Float
-  reason      String
-  refundedBy  String   // userId
-  type        String   @default("FULL") // FULL or PARTIAL
-  status      String   @default("COMPLETED")
-  createdAt   DateTime @default(now())
-  order       Order    @relation(fields: [orderId], references: [id])
+  id         String   @id @default(uuid())
+  orderId    String
+  amount     Float
+  reason     String
+  refundedBy String // userId
+  type       String   @default("FULL") // FULL or PARTIAL
+  status     String   @default("COMPLETED")
+  createdAt  DateTime @default(now())
+  order      Order    @relation(fields: [orderId], references: [id])
 }
 
 model LoyaltyProfile {
@@ -361,32 +366,32 @@ model AuditLog {
 }
 
 model Game {
-  id            String        @id @default(uuid())
-  shopId        String
-  name          String
-  type          String        @default("SCRATCH_CARD") // SCRATCH_CARD, SPIN_WHEEL
-  isActive      Boolean       @default(true)
-  attemptsPerDay Int          @default(1)
-  winRate       Float         @default(0.3) // 30% win rate
-  rewardType    String        @default("POINTS") // POINTS, DISCOUNT
-  rewardValue   Float         @default(50) // points or discount amount
-  minOrderAmount Float        @default(0)
-  createdAt     DateTime      @default(now())
-  shop          Shop          @relation(fields: [shopId], references: [id])
-  sessions      GameSession[]
+  id             String        @id @default(uuid())
+  shopId         String
+  name           String
+  type           String        @default("SCRATCH_CARD") // SCRATCH_CARD, SPIN_WHEEL
+  isActive       Boolean       @default(true)
+  attemptsPerDay Int           @default(1)
+  winRate        Float         @default(0.3) // 30% win rate
+  rewardType     String        @default("POINTS") // POINTS, DISCOUNT
+  rewardValue    Float         @default(50) // points or discount amount
+  minOrderAmount Float         @default(0)
+  createdAt      DateTime      @default(now())
+  shop           Shop          @relation(fields: [shopId], references: [id])
+  sessions       GameSession[]
 }
 
 model GameSession {
-  id         String   @id @default(uuid())
-  gameId     String
-  customerId String?
-  deviceId   String?  // for guest players
-  won        Boolean  @default(false)
-  rewardType String?
-  rewardValue Float?
-  rewardClaimed Boolean @default(false)
-  playedAt   DateTime @default(now())
-  game       Game     @relation(fields: [gameId], references: [id])
+  id            String   @id @default(uuid())
+  gameId        String
+  customerId    String?
+  deviceId      String? // for guest players
+  won           Boolean  @default(false)
+  rewardType    String?
+  rewardValue   Float?
+  rewardClaimed Boolean  @default(false)
+  playedAt      DateTime @default(now())
+  game          Game     @relation(fields: [gameId], references: [id])
 }
 
 enum Role {
@@ -442,4 +447,95 @@ enum SubscriptionStatus {
   GRACE
   SUSPENDED
   CANCELLED
+}
+
+/// Single-row table holding platform-wide configuration. The id is fixed so
+/// there is always exactly one settings row to read and patch.
+model PlatformSetting {
+  id                      String   @id @default("platform")
+  platformName            String   @default("CaféOS")
+  supportEmail            String   @default("support@cafeos.com")
+  // Commercials
+  defaultCommissionRate   Float    @default(150)
+  starterPriceMonthly     Int      @default(499)
+  growthPriceMonthly      Int      @default(999)
+  proPriceMonthly         Int      @default(1999)
+  trialDays               Int      @default(14)
+  // Grace period before a past-due subscription is suspended.
+  gracePeriodDays         Int      @default(7)
+  // Feature switches applied across every cafe
+  newSignupsEnabled       Boolean  @default(true)
+  affiliateProgramEnabled Boolean  @default(true)
+  loyaltyEnabled          Boolean  @default(true)
+  gamesEnabled            Boolean  @default(true)
+  maintenanceMode         Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+/// A support request raised by a cafe, triaged by the platform team.
+model SupportTicket {
+  id               String               @id @default(uuid())
+  shopId           String?
+  subject          String
+  body             String
+  category         String               @default("GENERAL") // GENERAL, BILLING, TECHNICAL, FEATURE
+  priority         TicketPriority       @default(NORMAL)
+  status           TicketStatus         @default(OPEN)
+  createdById      String?
+  contactEmail     String?
+  /// Set the first time the platform team replies, for response-time reporting.
+  firstRespondedAt DateTime?
+  resolvedAt       DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  shop             Shop?                @relation(fields: [shopId], references: [id])
+  replies          SupportTicketReply[]
+
+  @@index([status, priority])
+}
+
+model SupportTicketReply {
+  id         String        @id @default(uuid())
+  ticketId   String
+  authorId   String?
+  /// Who wrote it, so the thread can be rendered from either side.
+  authorRole String        @default("SUPER_ADMIN")
+  body       String
+  /// Internal notes stay hidden from the cafe.
+  isInternal Boolean       @default(false)
+  createdAt  DateTime      @default(now())
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+}
+
+enum TicketStatus {
+  OPEN
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+/// A platform-wide message from the CaféOS team to cafe owners.
+model Announcement {
+  id          String    @id @default(uuid())
+  title       String
+  body        String
+  /// Which cafes it targets: ALL, TRIAL, ACTIVE or PAST_DUE.
+  audience    String    @default("ALL")
+  status      String    @default("DRAFT") // DRAFT, PUBLISHED
+  publishedAt DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
 }

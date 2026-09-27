@@ -14,8 +14,9 @@ import {
     Plus
 } from "lucide-react"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { getPlatformStats, getRevenueOverview, getShops } from "@/lib/api"
 
-function MetricCard({ title, value, change, icon: Icon, prefix = "", loading = false }: any) {
+function MetricCard({ title, value, change, icon: Icon, prefix = "", loading = false, caption = "vs previous 30 days" }: any) {
     const isPositive = change >= 0
 
     return (
@@ -34,7 +35,7 @@ function MetricCard({ title, value, change, icon: Icon, prefix = "", loading = f
             <div className={`flex items-center gap-1 text-sm ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
                 {isPositive ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                 <span className="font-semibold">{Math.abs(change)}%</span>
-                <span className="text-[#8B4513]">vs last month</span>
+                <span className="text-[#8B4513]">{caption}</span>
             </div>
         </Card>
     )
@@ -45,53 +46,56 @@ export default function SuperAdminDashboard() {
         totalCafes: 0,
         activeUsers: 0,
         ordersToday: 0,
-        mrr: 0
+        mrr: 0,
+        mrrGrowth: 0,
+        cafeGrowth: 0,
+        userGrowth: 0,
+        orderGrowth: 0,
     })
+    const [mrrTrend, setMrrTrend] = useState<{ month: string; mrr: number }[]>([])
     const [recentCafes, setRecentCafes] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        fetchPlatformStats()
-    }, [])
+        let cancelled = false
 
-    const fetchPlatformStats = async () => {
-        try {
-            const token = localStorage.getItem('auth_token')
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+        const load = async () => {
+            try {
+                const [platformStats, revenue] = await Promise.all([
+                    getPlatformStats(),
+                    getRevenueOverview(),
+                ])
+                if (cancelled) return
+                setStats(platformStats)
+                setMrrTrend(revenue.mrrTrend)
+            } catch (error) {
+                console.error('Failed to fetch platform stats:', error)
+            }
 
-            // Fetch all shops to calculate platform stats
-            const shopsRes = await fetch(`${API_URL}/shops`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
-
-            if (shopsRes.ok) {
-                const shops = await shopsRes.json()
-
-                // Calculate stats from real data
-                setStats({
-                    totalCafes: shops.length,
-                    activeUsers: shops.reduce((acc: number, s: any) => acc + (s._count?.users || 0), 0),
-                    ordersToday: shops.reduce((acc: number, s: any) => acc + (s._count?.orders || 0), 0),
-                    mrr: shops.length * 1000 // Simple estimate: ₹1000 per cafe
-                })
-
-                // Get 5 most recent cafes for sidebar
-                const sorted = [...shops].sort((a, b) =>
-                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            try {
+                const shops = await getShops()
+                if (cancelled) return
+                const sorted = [...shops].sort(
+                    (a: any, b: any) =>
+                        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                 )
                 setRecentCafes(sorted.slice(0, 5))
+            } catch (error) {
+                console.error('Failed to fetch recent cafes:', error)
             }
-        } catch (error) {
-            console.error('Failed to fetch platform stats:', error)
-        } finally {
-            setLoading(false)
-        }
-    }
 
-    // Generate chart data based on actual cafe count
-    const chartData = [
-        { month: "This Month", value: stats.mrr }
-    ]
+            if (!cancelled) setLoading(false)
+        }
+
+        load()
+
+        return () => {
+            cancelled = true
+        }
+    }, [])
+
+    // Real committed MRR over the last 12 months, from the revenue endpoint.
+    const chartData = mrrTrend
 
     return (
         <div className="p-8">
@@ -114,7 +118,8 @@ export default function SuperAdminDashboard() {
                 <MetricCard
                     title="Monthly Recurring Revenue"
                     value={stats.mrr}
-                    change={0}
+                    change={stats.mrrGrowth}
+                    caption="MRR added, last 30 days"
                     icon={DollarSign}
                     prefix="₹"
                     loading={loading}
@@ -122,21 +127,23 @@ export default function SuperAdminDashboard() {
                 <MetricCard
                     title="Total Cafes"
                     value={stats.totalCafes}
-                    change={0}
+                    change={stats.cafeGrowth}
                     icon={Store}
                     loading={loading}
                 />
                 <MetricCard
-                    title="Active Users"
+                    title="Total Users"
                     value={stats.activeUsers}
-                    change={0}
+                    change={stats.userGrowth}
+                    caption="new sign-ups, last 30 days"
                     icon={Users}
                     loading={loading}
                 />
                 <MetricCard
-                    title="Total Orders"
+                    title="Orders Today"
                     value={stats.ordersToday}
-                    change={0}
+                    change={stats.orderGrowth}
+                    caption="orders, last 30 days vs previous"
                     icon={Activity}
                     loading={loading}
                 />
@@ -178,7 +185,7 @@ export default function SuperAdminDashboard() {
                                     />
                                     <Area
                                         type="monotone"
-                                        dataKey="value"
+                                        dataKey="mrr"
                                         stroke="#BF5700"
                                         fillOpacity={1}
                                         fill="url(#colorMRR)"
@@ -234,7 +241,7 @@ export default function SuperAdminDashboard() {
                 <Card className="p-6 border-[#e6dcc8] hover:shadow-lg transition-shadow cursor-pointer">
                     <Users className="w-8 h-8 mb-4 text-[#BF5700]" />
                     <h3 className="font-bold text-lg mb-2 text-[#2B1A12]">View Users</h3>
-                    <p className="text-sm text-[#8B4513]">{stats.activeUsers} total users</p>
+                    <p className="text-sm text-[#8B4513]">{stats.activeUsers} registered users</p>
                 </Card>
 
                 <Card className="p-6 border-[#e6dcc8] hover:shadow-lg transition-shadow cursor-pointer">

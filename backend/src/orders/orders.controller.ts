@@ -18,6 +18,14 @@ export class OrdersController {
         return this.ordersService.getKitchenOrders(shopId);
     }
 
+    // PATCH is the correct verb for a status change and is what the frontend
+    // sends. POST is kept so existing callers do not break.
+    @Patch(':id/status')
+    @UseGuards(JwtAuthGuard)
+    updateStatusPatch(@Param('id') id: string, @Body('status') status: string) {
+        return this.ordersService.updateStatus(id, status);
+    }
+
     @Post(':id/status')
     @UseGuards(JwtAuthGuard)
     updateStatus(@Param('id') id: string, @Body('status') status: string) {
@@ -65,6 +73,14 @@ export class OrdersController {
         return this.ordersService.modifyOrderItems(id, data.items);
     }
 
+    // Must stay above @Get(':id'), which would otherwise match "refunds"
+    // as an order id and route this to findOne.
+    @Get('refunds')
+    @UseGuards(JwtAuthGuard)
+    getRefunds(@Query('shopId') shopId: string) {
+        return this.ordersService.getRefunds(shopId);
+    }
+
     @Get()
     findAll(@Query('shopId') shopId: string) {
         return this.ordersService.findAll(shopId);
@@ -85,12 +101,6 @@ export class OrdersController {
     @UseGuards(JwtAuthGuard)
     remove(@Param('id') id: string) {
         return this.ordersService.remove(id);
-    }
-
-    @Get('refunds')
-    @UseGuards(JwtAuthGuard)
-    getRefunds(@Query('shopId') shopId: string) {
-        return this.ordersService.getRefunds(shopId);
     }
 
     @Post(':id/refund')

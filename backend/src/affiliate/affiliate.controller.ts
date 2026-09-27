@@ -9,18 +9,18 @@ export class AffiliateController {
     @UseGuards(JwtAuthGuard)
     @Get('stats')
     async getStats(@Request() req) {
-        return this.affiliateService.getStats(req.user.id);
+        return this.affiliateService.getStats(req.user.userId);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get('referrals')
     async getReferrals(@Request() req) {
-        return this.affiliateService.getReferrals(req.user.id);
+        return this.affiliateService.getReferrals(req.user.userId);
     }
 
     @UseGuards(JwtAuthGuard)
     @Post('onboard')
     async onboardCafe(@Request() req, @Body() body: { shopName: string; ownerName: string; ownerPhone: string }) {
-        return this.affiliateService.onboardCafe(req.user.id, body);
+        return this.affiliateService.onboardCafe(req.user.userId, body);
     }
 }

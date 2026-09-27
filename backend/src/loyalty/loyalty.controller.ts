@@ -9,7 +9,7 @@ export class LoyaltyController {
     @UseGuards(JwtAuthGuard)
     @Get('stats')
     async getStats(@Request() req) {
-        return this.loyaltyService.getUserStats(req.user.id);
+        return this.loyaltyService.getUserStats(req.user.userId);
     }
 
     @UseGuards(JwtAuthGuard)
@@ -21,6 +21,6 @@ export class LoyaltyController {
     @UseGuards(JwtAuthGuard)
     @Post('referral/create')
     async createReferralCode(@Request() req) {
-        return this.loyaltyService.createReferralCode(req.user.id);
+        return this.loyaltyService.createReferralCode(req.user.userId);
     }
 }

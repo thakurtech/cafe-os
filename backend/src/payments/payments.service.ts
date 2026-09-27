@@ -7,13 +7,42 @@ import * as crypto from 'crypto';
 @Injectable()
 export class PaymentsService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private razorpay: any;
+  private razorpayClient: any = null;
 
-  constructor(private prisma: PrismaService) {
-    this.razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID || '',
-      key_secret: process.env.RAZORPAY_KEY_SECRET || '',
-    });
+  constructor(private prisma: PrismaService) { }
+
+  /**
+   * Builds the Razorpay client on first use rather than in the constructor.
+   *
+   * The Razorpay SDK throws '`key_id` or `oauthToken` is mandatory' when
+   * constructed without credentials. Doing that in the constructor meant Nest
+   * failed to instantiate this provider, so the whole application refused to
+   * boot without RAZORPAY_KEY_ID -- taking auth, the POS and the kitchen display
+   * down over a missing optional payment key. Now a deployment with no payment
+   * credentials runs fine and only online payment attempts fail, with a message
+   * that says what is missing.
+   */
+  private getRazorpay() {
+    if (this.razorpayClient) {
+      return this.razorpayClient;
+    }
+
+    const keyId = process.env.RAZORPAY_KEY_ID?.trim();
+    const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
+
+    if (!keyId || !keySecret) {
+      throw new BadRequestException(
+        'Online payments are not configured on this server. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to enable them.',
+      );
+    }
+
+    this.razorpayClient = new Razorpay({ key_id: keyId, key_secret: keySecret });
+    return this.razorpayClient;
+  }
+
+  /** Whether online payments can be attempted at all. */
+  isConfigured(): boolean {
+    return Boolean(process.env.RAZORPAY_KEY_ID?.trim() && process.env.RAZORPAY_KEY_SECRET?.trim());
   }
 
   async createRazorpayOrder(amount: number, currency: string, receipt: string, notes?: Record<string, string>) {
@@ -24,7 +53,7 @@ export class PaymentsService {
         receipt,
         notes,
       };
-      const order = await this.razorpay.orders.create(options);
+      const order = await this.getRazorpay().orders.create(options);
       return { id: order.id, amount: order.amount, currency: order.currency };
     } catch (error) {
       throw new BadRequestException('Failed to create Razorpay order: ' + (error as Error).message);
