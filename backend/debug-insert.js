@@ -1,8 +1,7 @@
-const { neon } = require('@neondatabase/serverless');
+const { getSql } = require('./db-client');
 const crypto = require('crypto');
 
-const DATABASE_URL = 'postgresql://neondb_owner:npg_c8JD1ilzjVyS@ep-muddy-truth-a1w2qvbx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require';
-const sql = neon(DATABASE_URL);
+const sql = getSql();
 
 async function insertData() {
     console.log('🌱 Inserting Shop and Menu...\n');

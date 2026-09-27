@@ -1,6 +1,6 @@
-const { neon } = require('@neondatabase/serverless');
+const { getSql } = require('./db-client');
 
-const sql = neon('postgresql://neondb_owner:npg_c8JD1ilzjVyS@ep-muddy-truth-a1w2qvbx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require');
+const sql = getSql();
 
 async function listAll() {
     console.log('Listing all database objects...\n');

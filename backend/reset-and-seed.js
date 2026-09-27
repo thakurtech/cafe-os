@@ -1,7 +1,7 @@
-const { neon } = require('@neondatabase/serverless');
+const { getSql } = require('./db-client');
 const crypto = require('crypto');
 
-const sql = neon('postgresql://neondb_owner:npg_c8JD1ilzjVyS@ep-muddy-truth-a1w2qvbx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require');
+const sql = getSql();
 
 const HASHED_PASSWORD = '$2b$10$EpRnTzVlqHNP0.fUbXUwSOal5wAllaRpTp.1x3/EnsPawL.9v.que';
 
