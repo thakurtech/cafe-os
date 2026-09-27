@@ -17,6 +17,20 @@ Run both: `npm run dev` in `frontend/`, `npm run start:dev` in `backend/`.
 `SUPER_ADMIN`, `CAFE_OWNER`, `MANAGER`, `CASHIER`, `CHEF`, `CAPTAIN`,
 `AFFILIATE`, `CUSTOMER` (see `Role` in `backend/prisma/schema.prisma`).
 
+### JWT_SECRET is required in production
+
+`JWT_SECRET` must be set to a strong, random value of at least 16 characters
+before starting with `NODE_ENV=production`. The process **refuses to boot**
+otherwise. This is deliberate: both the `JwtModule` and the passport strategy
+used to fall back to the literal `'your-secret-key'`, so a deployment that
+forgot the variable signed tokens with a value published in this repository and
+anyone could mint a `role: SUPER_ADMIN` token.
+
+Outside production a random per-process secret is generated with a loud warning,
+so a fresh clone runs without setup. It changes on every restart, which
+invalidates dev tokens by design — the insecure path should never look like a
+working one. See `src/auth/jwt-secret.ts`.
+
 Auth is JWT bearer. `JwtStrategy.validate()` puts `{ userId, email, role }` on
 `request.user` — note the property is **`userId`**, not `id`. Reading
 `req.user.id` yields `undefined` and silently breaks the lookup; this was a real
