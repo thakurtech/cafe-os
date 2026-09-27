@@ -1,7 +1,19 @@
-import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    Param,
+    Patch,
+    Post,
+    Query,
+    UseGuards,
+    ValidationPipe,
+} from '@nestjs/common';
 import { SuperAdminService } from './super-admin.service';
 import { RevenueService } from './revenue.service';
 import { AffiliatesService } from './affiliates.service';
+import { SettingsService } from './settings.service';
+import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -14,6 +26,7 @@ export class SuperAdminController {
         private readonly superAdminService: SuperAdminService,
         private readonly revenueService: RevenueService,
         private readonly affiliatesService: AffiliatesService,
+        private readonly settingsService: SettingsService,
     ) { }
 
     @Get('platform-stats')
@@ -45,6 +58,26 @@ export class SuperAdminController {
     @Post('affiliates/payouts/:id/reject')
     rejectPayout(@Param('id') id: string) {
         return this.affiliatesService.rejectPayout(id);
+    }
+
+    @Get('settings')
+    getSettings() {
+        return this.settingsService.getSettings();
+    }
+
+    // The app registers no global ValidationPipe, so it is applied here explicitly.
+    @Patch('settings')
+    updateSettings(
+        @Body(
+            new ValidationPipe({
+                whitelist: true,
+                forbidNonWhitelisted: true,
+                transform: true,
+            }),
+        )
+        dto: UpdatePlatformSettingsDto,
+    ) {
+        return this.settingsService.updateSettings(dto);
     }
 
     @Get('cafes')

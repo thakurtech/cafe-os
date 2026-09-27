@@ -353,5 +353,50 @@ export function rejectPayout(payoutId: string) {
     return actOnPayout(payoutId, 'reject');
 }
 
+export interface PlatformSettings {
+    id: string;
+    platformName: string;
+    supportEmail: string;
+    defaultCommissionRate: number;
+    starterPriceMonthly: number;
+    growthPriceMonthly: number;
+    proPriceMonthly: number;
+    trialDays: number;
+    gracePeriodDays: number;
+    newSignupsEnabled: boolean;
+    affiliateProgramEnabled: boolean;
+    loyaltyEnabled: boolean;
+    gamesEnabled: boolean;
+    maintenanceMode: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export type PlatformSettingsPatch = Partial<
+    Omit<PlatformSettings, 'id' | 'createdAt' | 'updatedAt'>
+>;
+
+export async function getPlatformSettings(): Promise<PlatformSettings> {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/settings`);
+    if (!res.ok) throw new Error('Failed to fetch platform settings');
+    return res.json();
+}
+
+export async function updatePlatformSettings(
+    patch: PlatformSettingsPatch,
+): Promise<PlatformSettings> {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/settings`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: 'Failed to save settings' }));
+        // Nest validation errors arrive as { message: string[] }.
+        const detail = Array.isArray(error.message) ? error.message.join(', ') : error.message;
+        throw new Error(detail || 'Failed to save settings');
+    }
+    return res.json();
+}
+
 // Export API URL for WebSocket connections
 export { API_URL };
