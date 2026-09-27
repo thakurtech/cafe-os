@@ -1,5 +1,5 @@
-const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_c8JD1ilzjVyS@ep-muddy-truth-a1w2qvbx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require');
+const { getSql } = require('./db-client');
+const sql = getSql();
 
 async function check() {
     console.log('Checking database...\n');

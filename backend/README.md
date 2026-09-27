@@ -44,6 +44,32 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## Maintenance scripts
+
+The standalone scripts in this directory - `check-db.js`, `check-tables.js`,
+`create-tables.js`, `debug-insert.js`, `list-all.js`, `reset-and-seed.js`,
+`run-migration.js`, `seed-data.js`, `seed-shop.js`, `test-neon.js` - connect
+straight to the database through `db-client.js`.
+
+They read the connection string from the **`DATABASE_URL`** environment
+variable and exit with an error if it is unset. There is no hardcoded
+fallback, so set it first:
+
+```bash
+# from the backend/ directory
+$ export DATABASE_URL="postgresql://USER:PASSWORD@HOST/DB?sslmode=require"
+$ node check-db.js
+```
+
+If `dotenv` is installed, `db-client.js` also loads `backend/.env`
+automatically when the script is run from the `backend/` directory, so putting
+`DATABASE_URL` there works too. See `.env.example` for the full variable list.
+Never commit a real connection string - `.env` is gitignored, `.env.example`
+holds placeholders only.
+
+Note that `reset-and-seed.js` drops and recreates every table. Do not point it
+at a database whose data you care about.
+
 ## Run tests
 
 ```bash

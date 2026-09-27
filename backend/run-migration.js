@@ -1,7 +1,7 @@
-const { neon } = require('@neondatabase/serverless');
+const { getSql } = require('./db-client');
 const { execSync } = require('child_process');
 
-const sql = neon('postgresql://neondb_owner:npg_c8JD1ilzjVyS@ep-muddy-truth-a1w2qvbx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require');
+const sql = getSql();
 
 async function runMigration() {
     console.log('🚀 Generating migration SQL...');
