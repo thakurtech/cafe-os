@@ -1,6 +1,7 @@
 import {
     Body,
     Controller,
+    Delete,
     Get,
     Param,
     Patch,
@@ -15,8 +16,10 @@ import { RevenueService } from './revenue.service';
 import { AffiliatesService } from './affiliates.service';
 import { SettingsService } from './settings.service';
 import { SupportService } from './support.service';
+import { MarketingService } from './marketing.service';
 import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
 import { ReplyToTicketDto, UpdateTicketDto } from './dto/support.dto';
+import { CreateAnnouncementDto, UpdateAnnouncementDto } from './dto/marketing.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -37,6 +40,7 @@ export class SuperAdminController {
         private readonly affiliatesService: AffiliatesService,
         private readonly settingsService: SettingsService,
         private readonly supportService: SupportService,
+        private readonly marketingService: MarketingService,
     ) { }
 
     @Get('platform-stats')
@@ -113,6 +117,26 @@ export class SuperAdminController {
     @Patch('support/:id')
     updateTicket(@Param('id') id: string, @Body(bodyPipe) dto: UpdateTicketDto) {
         return this.supportService.updateTicket(id, dto);
+    }
+
+    @Get('marketing')
+    getMarketingOverview() {
+        return this.marketingService.getOverview();
+    }
+
+    @Post('marketing/announcements')
+    createAnnouncement(@Body(bodyPipe) dto: CreateAnnouncementDto, @Request() req) {
+        return this.marketingService.createAnnouncement(dto, req.user?.userId);
+    }
+
+    @Patch('marketing/announcements/:id')
+    updateAnnouncement(@Param('id') id: string, @Body(bodyPipe) dto: UpdateAnnouncementDto) {
+        return this.marketingService.updateAnnouncement(id, dto);
+    }
+
+    @Delete('marketing/announcements/:id')
+    deleteAnnouncement(@Param('id') id: string) {
+        return this.marketingService.deleteAnnouncement(id);
     }
 
     @Get('cafes')

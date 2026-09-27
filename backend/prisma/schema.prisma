@@ -519,3 +519,19 @@ enum TicketPriority {
   HIGH
   URGENT
 }
+
+/// A platform-wide message from the CaféOS team to cafe owners.
+model Announcement {
+  id          String    @id @default(uuid())
+  title       String
+  body        String
+  /// Which cafes it targets: ALL, TRIAL, ACTIVE or PAST_DUE.
+  audience    String    @default("ALL")
+  status      String    @default("DRAFT") // DRAFT, PUBLISHED
+  publishedAt DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+}

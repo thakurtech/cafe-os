@@ -519,5 +519,98 @@ export async function updateTicket(
     return res.json();
 }
 
+export type AnnouncementAudience = 'ALL' | 'TRIAL' | 'ACTIVE' | 'PAST_DUE';
+export type AnnouncementStatus = 'DRAFT' | 'PUBLISHED';
+
+export interface AnnouncementRow {
+    id: string;
+    title: string;
+    body: string;
+    audience: string;
+    status: string;
+    publishedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+    reach: number;
+}
+
+export interface MarketingOverview {
+    campaigns: {
+        total: number;
+        byStatus: { key: string; count: number }[];
+        byType: { key: string; count: number }[];
+        recent: {
+            id: string;
+            name: string;
+            type: string;
+            status: string;
+            shopName: string;
+            createdAt: string;
+        }[];
+    };
+    attribution: {
+        windowDays: number;
+        attributedOrders: number;
+        attributedRevenue: number;
+        coverage: number;
+        bySource: { key: string; orders: number; revenue: number }[];
+    };
+    announcements: AnnouncementRow[];
+}
+
+export async function getMarketingOverview(): Promise<MarketingOverview> {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/marketing`);
+    if (!res.ok) throw new Error('Failed to fetch marketing overview');
+    return res.json();
+}
+
+export async function createAnnouncement(payload: {
+    title: string;
+    body: string;
+    audience?: AnnouncementAudience;
+    status?: AnnouncementStatus;
+}): Promise<AnnouncementRow> {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/marketing/announcements`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(describeError(error, 'Failed to create announcement'));
+    }
+    return res.json();
+}
+
+export async function updateAnnouncement(
+    id: string,
+    patch: {
+        title?: string;
+        body?: string;
+        audience?: AnnouncementAudience;
+        status?: AnnouncementStatus;
+    },
+): Promise<AnnouncementRow> {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/marketing/announcements/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(describeError(error, 'Failed to update announcement'));
+    }
+    return res.json();
+}
+
+export async function deleteAnnouncement(id: string) {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/marketing/announcements/${id}`, {
+        method: 'DELETE',
+    });
+    if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(describeError(error, 'Failed to delete announcement'));
+    }
+    return res.json();
+}
+
 // Export API URL for WebSocket connections
 export { API_URL };
