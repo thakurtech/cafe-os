@@ -71,3 +71,49 @@
 
 ## 🎉 Ready for Sales?
 **Yes!** The application core flows are complete. You can now demo this to potential cafe owners.
+
+---
+
+## 🛡️ Super Admin Console
+
+Every page under `/super-admin` reads live data from the platform database.
+
+| Page | What it shows |
+|------|---------------|
+| **Overview** (`/super-admin`) | MRR, cafe count, users, orders today — each with real growth vs. the previous 30 days |
+| **Analytics** (`/super-admin/analytics`) | Revenue and order trends over 7/30/90 days, peak hours, order channels, payment mix, top-performing cafes |
+| **Revenue** (`/super-admin/revenue`) | MRR/ARR/ARPA, revenue by plan, subscription health, trials ending this week, renewals due, per-cafe billing |
+| **Affiliates** (`/super-admin/affiliates`) | Partner performance, payout requests to approve or decline, settlement history |
+| **Settings** (`/super-admin/settings`) | Plan pricing, affiliate commission, trial and grace length, platform feature switches |
+| **Support** (`/super-admin/support`) | Ticket inbox sorted worst-first, threaded replies, internal notes, resolve/reopen |
+| **Marketing** (`/super-admin/marketing`) | Broadcast announcements to cafes, order-source attribution, campaigns cafes are running |
+
+### Approving an affiliate payout
+1. Go to **Affiliates**. Pending requests sit at the top under **Payout Requests**.
+2. **Approve** settles the payout and deducts it from the partner's balance.
+   **Decline** leaves the balance claimable.
+3. A payout can only be settled once — approving twice is refused rather than
+   paying twice.
+
+### Answering a support ticket
+1. Go to **Support**. Tickets needing attention are listed first; anything
+   never answered is flagged **Never answered**.
+2. Pick a ticket, then **Send reply** to answer the cafe — this moves the
+   ticket to *Pending* and starts the response-time clock.
+3. Tick **Internal note** to leave a note for your team instead. The cafe never
+   sees it, and it does not count as a response.
+4. **Resolve** when done; a cafe replying afterwards reopens the ticket.
+
+### Sending an announcement
+1. Go to **Marketing**, write a title and message.
+2. Choose the audience — all cafes, on trial, paying, or past due. The list
+   below shows how many cafes each audience currently reaches.
+3. **Publish** sends it, or **Save as draft** to finish later.
+
+### Changing platform pricing
+Go to **Settings**. Edits are staged — the header shows how many unsaved
+changes you have, and only the fields you actually changed are sent when you
+**Save**. **Discard** reverts to the last saved values.
+
+> **Maintenance mode** takes ordering offline for *every* cafe on the platform.
+> Use it only during a planned window.

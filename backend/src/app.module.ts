@@ -17,6 +17,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { TablesModule } from './tables/tables.module';
 import { StorefrontModule } from './storefront/storefront.module';
 import { PaymentsModule } from './payments/payments.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { PaymentsModule } from './payments/payments.module';
     TablesModule,
     StorefrontModule,
     PaymentsModule,
+    SupportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

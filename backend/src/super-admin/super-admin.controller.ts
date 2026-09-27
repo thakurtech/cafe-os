@@ -18,7 +18,7 @@ import { SettingsService } from './settings.service';
 import { SupportService } from './support.service';
 import { MarketingService } from './marketing.service';
 import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
-import { ReplyToTicketDto, UpdateTicketDto } from './dto/support.dto';
+import { CreateTicketDto, ReplyToTicketDto, UpdateTicketDto } from './dto/support.dto';
 import { CreateAnnouncementDto, UpdateAnnouncementDto } from './dto/marketing.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -90,6 +90,12 @@ export class SuperAdminController {
     @Get('support')
     listTickets(@Query('status') status?: string, @Query('priority') priority?: string) {
         return this.supportService.listTickets({ status, priority });
+    }
+
+    // Lets the platform team log a ticket on a cafe's behalf, e.g. after a phone call.
+    @Post('support')
+    createTicket(@Body(bodyPipe) dto: CreateTicketDto, @Request() req) {
+        return this.supportService.createTicket(dto, req.user?.userId);
     }
 
     @Get('support/stats')
