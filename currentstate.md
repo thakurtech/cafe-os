@@ -139,6 +139,36 @@ are exercised for real rather than mocked away.
    while the codebase is 4-space, so lint reports errors across files nobody
    has touched. Either set `tabWidth: 4` in `.prettierrc` or run a single
    repo-wide format commit; until then, match the surrounding 4-space style.
-5. **Analytics `hourly` uses server local time.** `Date.getHours()` is the
-   server's timezone, not each cafe's. Fine for a single-region deployment,
-   wrong once cafes span timezones.
+5. **Analytics uses server local time throughout.** Day buckets, the
+   `ordersToday` KPI and hour-of-day buckets all use the server's timezone, so
+   they agree with each other. Set `TZ` to the deployment's region. Still
+   wrong once cafes span multiple timezones — that needs a per-shop timezone.
+6. **Platform settings are write-only.** `PlatformSetting` is read by nothing
+   outside `settings.service.ts`. `maintenanceMode`, `newSignupsEnabled`,
+   `affiliateProgramEnabled`, `loyaltyEnabled`, `gamesEnabled`, `trialDays`,
+   `gracePeriodDays`, the plan prices and `defaultCommissionRate` all persist
+   and report success, but no other service consults them. Flipping
+   `maintenanceMode` does not take ordering offline. Wiring each one to its
+   feature is outstanding work.
+7. **Affiliate referrals never leave TRIAL.** The only writer of
+   `AffiliateReferral.status` hardcodes `'TRIAL'`, so `convertedReferrals`,
+   `producingAffiliates` and the affiliate's own `activeCafes` are
+   structurally zero forever. Subscription activation should write the
+   converted status. Note the two services also disagree on the value:
+   `super-admin/affiliates.service.ts` counts `ACTIVE` and `CONVERTED`,
+   `affiliate/affiliate.service.ts` counts only `ACTIVE`. Pick one, put it in
+   a shared constant.
+8. **Partial refunds are not deducted from revenue.** A FULL refund sets the
+   order to `CANCELLED` and is therefore excluded, but a PARTIAL refund leaves
+   the order `COMPLETED` at its original `totalAmount` and no service
+   subtracts `Refund.amount`. A ₹1000 order with a ₹600 refund still counts
+   as ₹1000 everywhere. `paymentStatus` is also ignored, so unpaid orders
+   count as revenue — consistent across `shops`, `reports` and `super-admin`,
+   so it is a platform-wide definition rather than drift.
+9. **The app will not boot without `RAZORPAY_KEY_ID`.** `PaymentsService`
+   constructs its Razorpay client at DI time, so a missing optional payment
+   key takes auth, POS and kitchen down with it. Lazy-initialising that client
+   would let the platform run without payment credentials.
+10. **An already-seeded super admin is not rotated.** Deployments that booted
+   the old code still have `admin@cafeos.com` with the password `password`.
+   Change it by hand.
