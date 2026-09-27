@@ -612,5 +612,71 @@ export async function deleteAnnouncement(id: string) {
     return res.json();
 }
 
+// ==================== SHOP ORDERS (dashboard + kitchen) ====================
+
+// Shape returned by GET /orders?shopId= and GET /orders/kitchen?shopId=
+// (backend orders.service: `findAll` includes items.menuItem + customer,
+// `getKitchenOrders` includes items.menuItem only).
+
+export type ShopOrderStatus =
+    | 'PENDING'
+    | 'CONFIRMED'
+    | 'PREPARING'
+    | 'READY'
+    | 'COMPLETED'
+    | 'CANCELLED'
+    | 'HELD';
+
+export type ShopOrderSource =
+    | 'POS'
+    | 'QR_TABLE'
+    | 'QR_PICKUP'
+    | 'DELIVERY'
+    | 'MINI_APP'
+    | 'STOREFRONT';
+
+export type ShopOrderPaymentMethod =
+    | 'CASH'
+    | 'UPI'
+    | 'CARD'
+    | 'SPLIT'
+    | 'RAZORPAY'
+    | 'PAY_AT_COUNTER';
+
+export interface ShopOrderCustomer {
+    id: string;
+    name: string | null;
+    phone: string | null;
+    email: string | null;
+}
+
+export interface ShopOrderItem {
+    id: string;
+    menuItemId: string;
+    quantity: number;
+    price: number;
+    nameSnapshot?: string;
+    menuItem?: { id: string; name: string; price: number } | null;
+}
+
+export interface ShopOrder {
+    id: string;
+    shortId: string;
+    shopId: string;
+    customerId: string | null;
+    status: ShopOrderStatus;
+    source: ShopOrderSource;
+    totalAmount: number;
+    discountAmount: number;
+    paymentMethod: ShopOrderPaymentMethod;
+    paymentStatus: string;
+    tableNumber: string | null;
+    notes: string | null;
+    createdAt: string;
+    updatedAt: string;
+    customer?: ShopOrderCustomer | null;
+    items: ShopOrderItem[];
+}
+
 // Export API URL for WebSocket connections
 export { API_URL };
