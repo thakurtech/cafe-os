@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -26,7 +26,9 @@ export class AuthService {
         const user = await this.validateUser(email, password);
 
         if (!user) {
-            throw new Error('Invalid credentials');
+            // A plain Error would surface as a 500, so every mistyped password
+            // looked like a server fault and logged an ERROR-level stack trace.
+            throw new UnauthorizedException('Invalid credentials');
         }
 
         const payload = {
