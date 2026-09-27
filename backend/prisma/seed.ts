@@ -4,10 +4,23 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
+  // This seeder creates a SUPER_ADMIN and demo shop with known credentials, which
+  // is fine locally and unacceptable against a live database. Refuse outright in
+  // production rather than trusting whoever ran it to have meant it.
+  if (process.env.NODE_ENV === 'production') {
+    console.error(
+      'Refusing to seed: NODE_ENV is production.\n' +
+      'This seeder creates accounts with a known password and demo data.\n' +
+      'To create the platform owner in production, set SUPER_ADMIN_PASSWORD and start the app.',
+    );
+    process.exit(1);
+  }
+
   console.log('🌱 Starting seed...');
 
-  // 1. Create Admin User
-  const hashedPassword = await bcrypt.hash('password', 10);
+  // 1. Create Admin User. SUPER_ADMIN_PASSWORD overrides the local default.
+  const seedPassword = process.env.SUPER_ADMIN_PASSWORD?.trim() || 'password';
+  const hashedPassword = await bcrypt.hash(seedPassword, 10);
 
   const admin = await prisma.user.upsert({
     where: { phone: '+919999999999' },
