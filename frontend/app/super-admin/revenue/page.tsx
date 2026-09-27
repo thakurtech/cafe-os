@@ -247,7 +247,7 @@ export default function RevenuePage() {
                             value={formatCurrency(data.mrr)}
                             icon={IndianRupee}
                             change={data.growth.mrr}
-                            caption="added this month"
+                            caption="MRR added, last 30 days"
                         />
                         <MetricCard
                             title="ARR"

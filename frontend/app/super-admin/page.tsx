@@ -16,7 +16,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { getPlatformStats, getRevenueOverview, getShops } from "@/lib/api"
 
-function MetricCard({ title, value, change, icon: Icon, prefix = "", loading = false }: any) {
+function MetricCard({ title, value, change, icon: Icon, prefix = "", loading = false, caption = "vs previous 30 days" }: any) {
     const isPositive = change >= 0
 
     return (
@@ -35,7 +35,7 @@ function MetricCard({ title, value, change, icon: Icon, prefix = "", loading = f
             <div className={`flex items-center gap-1 text-sm ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
                 {isPositive ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                 <span className="font-semibold">{Math.abs(change)}%</span>
-                <span className="text-[#8B4513]">vs last month</span>
+                <span className="text-[#8B4513]">{caption}</span>
             </div>
         </Card>
     )
@@ -119,6 +119,7 @@ export default function SuperAdminDashboard() {
                     title="Monthly Recurring Revenue"
                     value={stats.mrr}
                     change={stats.mrrGrowth}
+                    caption="MRR added, last 30 days"
                     icon={DollarSign}
                     prefix="₹"
                     loading={loading}
@@ -131,9 +132,10 @@ export default function SuperAdminDashboard() {
                     loading={loading}
                 />
                 <MetricCard
-                    title="Active Users"
+                    title="Total Users"
                     value={stats.activeUsers}
                     change={stats.userGrowth}
+                    caption="new sign-ups, last 30 days"
                     icon={Users}
                     loading={loading}
                 />
@@ -141,6 +143,7 @@ export default function SuperAdminDashboard() {
                     title="Orders Today"
                     value={stats.ordersToday}
                     change={stats.orderGrowth}
+                    caption="orders, last 30 days vs previous"
                     icon={Activity}
                     loading={loading}
                 />
@@ -238,7 +241,7 @@ export default function SuperAdminDashboard() {
                 <Card className="p-6 border-[#e6dcc8] hover:shadow-lg transition-shadow cursor-pointer">
                     <Users className="w-8 h-8 mb-4 text-[#BF5700]" />
                     <h3 className="font-bold text-lg mb-2 text-[#2B1A12]">View Users</h3>
-                    <p className="text-sm text-[#8B4513]">{stats.activeUsers} total users</p>
+                    <p className="text-sm text-[#8B4513]">{stats.activeUsers} registered users</p>
                 </Card>
 
                 <Card className="p-6 border-[#e6dcc8] hover:shadow-lg transition-shadow cursor-pointer">

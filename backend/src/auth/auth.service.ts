@@ -65,25 +65,60 @@ export class AuthService {
         return result;
     }
 
+    /**
+     * Seeds the platform owner account on boot.
+     *
+     * This used to hardcode bcrypt.hash('password') and print the credentials to
+     * the log, on every boot including production — a SUPER_ADMIN account with a
+     * publicly known password on every deployment. In production the password must
+     * now come from SUPER_ADMIN_PASSWORD; without it no account is created, because
+     * seeding a guessable platform owner is worse than having none.
+     *
+     * Outside production it still falls back to 'password' for convenience, and
+     * says so, since a local database is not worth protecting.
+     */
     async createSuperAdmin() {
-        const existingAdmin = await this.prisma.user.findUnique({
-            where: { email: 'admin@cafeos.com' },
+        const isProduction = process.env.NODE_ENV === 'production';
+        const email = process.env.SUPER_ADMIN_EMAIL?.trim() || 'admin@cafeos.com';
+        const configuredPassword = process.env.SUPER_ADMIN_PASSWORD?.trim();
+
+        const existingAdmin = await this.prisma.user.findUnique({ where: { email } });
+        if (existingAdmin) {
+            return;
+        }
+
+        if (isProduction && !configuredPassword) {
+            console.error(
+                `[auth] No super admin exists and SUPER_ADMIN_PASSWORD is not set, so none was created.\n` +
+                `       Set SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD and restart to seed ${email}.`,
+            );
+            return;
+        }
+
+        if (isProduction && configuredPassword!.length < 12) {
+            console.error(
+                '[auth] SUPER_ADMIN_PASSWORD is shorter than 12 characters. No super admin was created.',
+            );
+            return;
+        }
+
+        const password = configuredPassword || 'password';
+
+        await this.prisma.user.create({
+            data: {
+                email,
+                password: await bcrypt.hash(password, 10),
+                name: 'Platform Owner',
+                role: 'SUPER_ADMIN',
+                phone: 'admin',
+            },
         });
 
-        if (!existingAdmin) {
-            const hashedPassword = await bcrypt.hash('password', 10);
-
-            await this.prisma.user.create({
-                data: {
-                    email: 'admin@cafeos.com',
-                    password: hashedPassword,
-                    name: 'Sumit (Platform Owner)',
-                    role: 'SUPER_ADMIN',
-                    phone: 'admin',
-                },
-            });
-
-            console.log('✅ Super admin created: admin@cafeos.com / password');
-        }
+        // Never print the password in production, even though it came from the env.
+        console.log(
+            configuredPassword
+                ? `[auth] Super admin created: ${email} (password from SUPER_ADMIN_PASSWORD)`
+                : `[auth] Super admin created for local development: ${email} / password`,
+        );
     }
 }

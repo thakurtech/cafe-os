@@ -13,7 +13,11 @@ model User {
   phone            String            @unique
   name             String?
   email            String?           @unique
-  password         String            @default("$2b$10$EpRnTzVlqHNP0.fUbXUwSOal5wAllaRpTp.1x3/EnsPawL.9v.que")
+  /// Placeholder hash for rows created without a password (e.g. storefront
+  /// customers). Hashed from a random secret that was discarded, so no known
+  /// plaintext authenticates against it. The previous default was a hash of a
+  /// guessable password shared by every such row.
+  password         String            @default("$2b$10$pov2GhANA6qaColffv.8Ue.Q6QwWSklMBuBhYwG7NyB0RvSaoS0aa")
   role             Role              @default(CUSTOMER)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
