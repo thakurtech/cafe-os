@@ -1,6 +1,7 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { SuperAdminService } from './super-admin.service';
 import { RevenueService } from './revenue.service';
+import { AffiliatesService } from './affiliates.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -12,6 +13,7 @@ export class SuperAdminController {
     constructor(
         private readonly superAdminService: SuperAdminService,
         private readonly revenueService: RevenueService,
+        private readonly affiliatesService: AffiliatesService,
     ) { }
 
     @Get('platform-stats')
@@ -28,6 +30,21 @@ export class SuperAdminController {
     @Get('revenue')
     getRevenueOverview() {
         return this.revenueService.getRevenueOverview();
+    }
+
+    @Get('affiliates')
+    getAffiliateOverview() {
+        return this.affiliatesService.getOverview();
+    }
+
+    @Post('affiliates/payouts/:id/approve')
+    approvePayout(@Param('id') id: string) {
+        return this.affiliatesService.approvePayout(id);
+    }
+
+    @Post('affiliates/payouts/:id/reject')
+    rejectPayout(@Param('id') id: string) {
+        return this.affiliatesService.rejectPayout(id);
     }
 
     @Get('cafes')

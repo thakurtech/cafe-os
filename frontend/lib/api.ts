@@ -287,5 +287,71 @@ export async function getRevenueOverview(): Promise<RevenueOverview> {
     return res.json();
 }
 
+export interface AffiliateSummary {
+    id: string;
+    userId: string;
+    name: string;
+    email: string | null;
+    phone: string;
+    code: string;
+    commissionRate: number;
+    balance: number;
+    referrals: { total: number; converted: number; trial: number };
+    paidToDate: number;
+    pendingPayout: number;
+}
+
+export interface PayoutRow {
+    id: string;
+    affiliateId: string;
+    affiliateName: string;
+    affiliateCode: string;
+    amount: number;
+    status: string;
+    createdAt: string;
+}
+
+export interface AffiliateOverview {
+    totals: {
+        affiliates: number;
+        producingAffiliates: number;
+        referrals: number;
+        convertedReferrals: number;
+        trialReferrals: number;
+        outstandingBalance: number;
+        pendingPayoutAmount: number;
+        paidOutAmount: number;
+    };
+    affiliates: AffiliateSummary[];
+    pendingPayouts: PayoutRow[];
+    recentPayouts: PayoutRow[];
+}
+
+export async function getAffiliateOverview(): Promise<AffiliateOverview> {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/affiliates`);
+    if (!res.ok) throw new Error('Failed to fetch affiliate overview');
+    return res.json();
+}
+
+async function actOnPayout(payoutId: string, action: 'approve' | 'reject') {
+    const res = await fetchWithAuth(
+        `${API_URL}/super-admin/affiliates/payouts/${payoutId}/${action}`,
+        { method: 'POST' },
+    );
+    if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: `Failed to ${action} payout` }));
+        throw new Error(error.message || `Failed to ${action} payout`);
+    }
+    return res.json();
+}
+
+export function approvePayout(payoutId: string) {
+    return actOnPayout(payoutId, 'approve');
+}
+
+export function rejectPayout(payoutId: string) {
+    return actOnPayout(payoutId, 'reject');
+}
+
 // Export API URL for WebSocket connections
 export { API_URL };
