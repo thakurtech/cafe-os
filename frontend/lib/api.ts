@@ -398,5 +398,126 @@ export async function updatePlatformSettings(
     return res.json();
 }
 
+export type TicketStatus = 'OPEN' | 'PENDING' | 'RESOLVED' | 'CLOSED';
+export type TicketPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+
+export interface TicketListRow {
+    id: string;
+    subject: string;
+    category: string;
+    priority: TicketPriority;
+    status: TicketStatus;
+    shopId: string | null;
+    shopName: string;
+    contactEmail: string | null;
+    replyCount: number;
+    awaitingFirstReply: boolean;
+    lastActivityAt: string;
+    createdAt: string;
+    resolvedAt: string | null;
+}
+
+export interface TicketReply {
+    id: string;
+    ticketId: string;
+    authorId: string | null;
+    authorRole: string;
+    body: string;
+    isInternal: boolean;
+    createdAt: string;
+}
+
+export interface TicketDetail {
+    id: string;
+    subject: string;
+    body: string;
+    category: string;
+    priority: TicketPriority;
+    status: TicketStatus;
+    shopId: string | null;
+    shopName: string;
+    contactEmail: string | null;
+    firstRespondedAt: string | null;
+    resolvedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+    replies: TicketReply[];
+}
+
+export interface SupportStats {
+    open: number;
+    pending: number;
+    resolved: number;
+    closed: number;
+    unresolved: number;
+    urgentUnresolved: number;
+    awaitingFirstReply: number;
+    avgFirstResponseHours: number | null;
+    resolvedLast7Days: number;
+}
+
+function describeError(payload: { message?: string | string[] }, fallback: string) {
+    // Nest validation errors arrive as { message: string[] }.
+    if (Array.isArray(payload.message)) return payload.message.join(', ');
+    return payload.message || fallback;
+}
+
+export async function getSupportTickets(filters: {
+    status?: string;
+    priority?: string;
+} = {}): Promise<TicketListRow[]> {
+    const params = new URLSearchParams();
+    if (filters.status) params.set('status', filters.status);
+    if (filters.priority) params.set('priority', filters.priority);
+    const query = params.toString();
+
+    const res = await fetchWithAuth(`${API_URL}/super-admin/support${query ? `?${query}` : ''}`);
+    if (!res.ok) throw new Error('Failed to fetch support tickets');
+    return res.json();
+}
+
+export async function getSupportStats(): Promise<SupportStats> {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/support/stats`);
+    if (!res.ok) throw new Error('Failed to fetch support stats');
+    return res.json();
+}
+
+export async function getSupportTicket(id: string): Promise<TicketDetail> {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/support/${id}`);
+    if (!res.ok) throw new Error('Failed to fetch ticket');
+    return res.json();
+}
+
+export async function replyToTicket(
+    id: string,
+    body: string,
+    isInternal = false,
+): Promise<TicketReply> {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/support/${id}/replies`, {
+        method: 'POST',
+        body: JSON.stringify({ body, isInternal }),
+    });
+    if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(describeError(error, 'Failed to send reply'));
+    }
+    return res.json();
+}
+
+export async function updateTicket(
+    id: string,
+    patch: { status?: TicketStatus; priority?: TicketPriority },
+) {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/support/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(describeError(error, 'Failed to update ticket'));
+    }
+    return res.json();
+}
+
 // Export API URL for WebSocket connections
 export { API_URL };

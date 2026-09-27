@@ -56,6 +56,7 @@ model Shop {
   users             User[]
   tables            Table[]
   games             Game[]
+  supportTickets    SupportTicket[]
 }
 
 model Subscription {
@@ -466,4 +467,55 @@ model PlatformSetting {
   maintenanceMode         Boolean  @default(false)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
+}
+
+/// A support request raised by a cafe, triaged by the platform team.
+model SupportTicket {
+  id               String               @id @default(uuid())
+  shopId           String?
+  subject          String
+  body             String
+  category         String               @default("GENERAL") // GENERAL, BILLING, TECHNICAL, FEATURE
+  priority         TicketPriority       @default(NORMAL)
+  status           TicketStatus         @default(OPEN)
+  createdById      String?
+  contactEmail     String?
+  /// Set the first time the platform team replies, for response-time reporting.
+  firstRespondedAt DateTime?
+  resolvedAt       DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  shop             Shop?                @relation(fields: [shopId], references: [id])
+  replies          SupportTicketReply[]
+
+  @@index([status, priority])
+}
+
+model SupportTicketReply {
+  id         String        @id @default(uuid())
+  ticketId   String
+  authorId   String?
+  /// Who wrote it, so the thread can be rendered from either side.
+  authorRole String        @default("SUPER_ADMIN")
+  body       String
+  /// Internal notes stay hidden from the cafe.
+  isInternal Boolean       @default(false)
+  createdAt  DateTime      @default(now())
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+}
+
+enum TicketStatus {
+  OPEN
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }

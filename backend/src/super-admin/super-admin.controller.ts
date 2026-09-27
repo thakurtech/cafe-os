@@ -6,6 +6,7 @@ import {
     Patch,
     Post,
     Query,
+    Request,
     UseGuards,
     ValidationPipe,
 } from '@nestjs/common';
@@ -13,10 +14,18 @@ import { SuperAdminService } from './super-admin.service';
 import { RevenueService } from './revenue.service';
 import { AffiliatesService } from './affiliates.service';
 import { SettingsService } from './settings.service';
+import { SupportService } from './support.service';
 import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
+import { ReplyToTicketDto, UpdateTicketDto } from './dto/support.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+
+const bodyPipe = new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+});
 
 @Controller('super-admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -27,6 +36,7 @@ export class SuperAdminController {
         private readonly revenueService: RevenueService,
         private readonly affiliatesService: AffiliatesService,
         private readonly settingsService: SettingsService,
+        private readonly supportService: SupportService,
     ) { }
 
     @Get('platform-stats')
@@ -68,16 +78,41 @@ export class SuperAdminController {
     // The app registers no global ValidationPipe, so it is applied here explicitly.
     @Patch('settings')
     updateSettings(
-        @Body(
-            new ValidationPipe({
-                whitelist: true,
-                forbidNonWhitelisted: true,
-                transform: true,
-            }),
-        )
-        dto: UpdatePlatformSettingsDto,
+        @Body(bodyPipe) dto: UpdatePlatformSettingsDto,
     ) {
         return this.settingsService.updateSettings(dto);
+    }
+
+    @Get('support')
+    listTickets(@Query('status') status?: string, @Query('priority') priority?: string) {
+        return this.supportService.listTickets({ status, priority });
+    }
+
+    @Get('support/stats')
+    getSupportStats() {
+        return this.supportService.getStats();
+    }
+
+    @Get('support/:id')
+    getTicket(@Param('id') id: string) {
+        return this.supportService.getTicket(id);
+    }
+
+    @Post('support/:id/replies')
+    replyToTicket(
+        @Param('id') id: string,
+        @Body(bodyPipe) dto: ReplyToTicketDto,
+        @Request() req,
+    ) {
+        return this.supportService.replyToTicket(id, dto, {
+            userId: req.user?.userId,
+            role: req.user?.role,
+        });
+    }
+
+    @Patch('support/:id')
+    updateTicket(@Param('id') id: string, @Body(bodyPipe) dto: UpdateTicketDto) {
+        return this.supportService.updateTicket(id, dto);
     }
 
     @Get('cafes')
