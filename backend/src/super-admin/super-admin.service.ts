@@ -6,8 +6,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // Orders in these states never count towards revenue or volume.
 const EXCLUDED_ORDER_STATUSES = ['CANCELLED'] as const;
 
-// Subscriptions in these states never count towards MRR.
-const NON_BILLING_SUBSCRIPTION_STATUSES = ['CANCELLED', 'SUSPENDED', 'TRIAL'] as const;
+// Subscriptions in these states never count towards MRR. Shared with RevenueService
+// so both the dashboard and the revenue page report the same figure.
+export const NON_BILLING_SUBSCRIPTION_STATUSES = ['CANCELLED', 'SUSPENDED', 'TRIAL'] as const;
 
 export interface PlatformAnalytics {
     range: { days: number; from: string; to: string };

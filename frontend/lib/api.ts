@@ -244,5 +244,48 @@ export async function getPlatformStats(): Promise<PlatformStats> {
     return res.json();
 }
 
+export interface BillingRow {
+    shopId: string;
+    shopName: string;
+    slug: string;
+    plan: string;
+    status: string;
+    priceMonthly: number;
+    trialEndsAt: string | null;
+    currentPeriodEnd: string | null;
+    isBilled: boolean;
+    hasPaymentLink: boolean;
+}
+
+export interface RevenueOverview {
+    mrr: number;
+    arr: number;
+    arpa: number;
+    growth: { mrr: number };
+    counts: {
+        total: number;
+        active: number;
+        trialing: number;
+        pastDue: number;
+        grace: number;
+        suspended: number;
+        cancelled: number;
+        withoutSubscription: number;
+    };
+    atRisk: { subscriptions: number; mrr: number };
+    planMix: { plan: string; subscriptions: number; mrr: number; share: number }[];
+    statusMix: { status: string; subscriptions: number; mrr: number }[];
+    mrrTrend: { month: string; mrr: number }[];
+    trialsEndingSoon: BillingRow[];
+    renewalsDue: BillingRow[];
+    billing: BillingRow[];
+}
+
+export async function getRevenueOverview(): Promise<RevenueOverview> {
+    const res = await fetchWithAuth(`${API_URL}/super-admin/revenue`);
+    if (!res.ok) throw new Error('Failed to fetch revenue overview');
+    return res.json();
+}
+
 // Export API URL for WebSocket connections
 export { API_URL };
