@@ -44,6 +44,43 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## Running the backend locally
+
+Verified from a clean clone against a local PostgreSQL 16:
+
+```bash
+# 1. a database to point at
+docker compose up -d postgres          # from the repo root
+# (or any local postgres: createdb cafeos)
+
+# 2. environment
+cp .env.example .env
+# edit .env: set DATABASE_URL and DIRECT_URL to your local database
+
+# 3. schema + deps
+npm install
+npx prisma@5.21.1 generate
+npx prisma@5.21.1 db push
+
+# 4. run - note the `set -a` export, see the warning below
+set -a; . ./.env; set +a
+npm run start:dev                      # http://localhost:3001
+```
+
+Then `cd ../frontend && npm install && npm run dev` for the UI on
+http://localhost:3000. It talks to the backend via `NEXT_PUBLIC_API_URL`,
+defaulting to `http://localhost:3001`.
+
+**The server does not read `.env` by itself.** `src/app.module.ts` never
+registers `@nestjs/config`'s `ConfigModule`, so services read `process.env`
+directly and the file is ignored unless you export it into the shell first
+(step 4 above). Symptoms if you skip it: Prisma cannot find `DATABASE_URL`,
+and `PaymentsService` aborts startup with "`key_id` or `oauthToken` is mandatory" because `RAZORPAY_KEY_ID` is empty.
+
+`DIRECT_URL` is required too - `prisma/schema.prisma` declares
+`directUrl = env("DIRECT_URL")`, and every Prisma CLI command fails with
+`P1012` when it is unset.
+
 ## Maintenance scripts
 
 The standalone scripts in this directory - `check-db.js`, `check-tables.js`,
