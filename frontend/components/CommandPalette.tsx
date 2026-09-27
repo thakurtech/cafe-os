@@ -16,6 +16,8 @@ import {
     Bell,
     TrendingUp,
     FileText,
+    Package,
+    UserCircle,
 } from "lucide-react"
 import { useHotkeys } from "react-hotkeys-hook"
 
@@ -30,9 +32,11 @@ const actions = [
     { title: "Menu Management", icon: Coffee, href: "/dashboard/menu", keywords: ["items", "food"] },
     { title: "Customers", icon: Users, href: "/dashboard/customers", keywords: ["guests", "people"] },
     { title: "Analytics", icon: TrendingUp, href: "/dashboard/analytics", keywords: ["reports", "stats"] },
-    { title: "Marketing", icon: Bell, href: "/dashboard/marketing", keywords: ["campaigns", "promotions"] },
-    { title: "Gift Cards", icon: Gift, href: "/dashboard/gift-cards", keywords: ["vouchers"] },
-    { title: "Events", icon: Calendar, href: "/dashboard/events", keywords: ["bookings", "reservations"] },
+    { title: "Campaigns", icon: Bell, href: "/dashboard/campaigns", keywords: ["marketing", "promotions"] },
+    { title: "Loyalty & Rewards", icon: Gift, href: "/dashboard/loyalty", keywords: ["points", "vouchers"] },
+    { title: "Tables & QR", icon: Calendar, href: "/dashboard/tables", keywords: ["bookings", "reservations", "qr"] },
+    { title: "Inventory", icon: Package, href: "/dashboard/inventory", keywords: ["stock", "supplies"] },
+    { title: "Staff & Shifts", icon: UserCircle, href: "/dashboard/staff", keywords: ["team", "roster"] },
     { title: "Settings", icon: Settings, href: "/dashboard/settings", keywords: ["preferences", "config"] },
     { title: "Landing Page", icon: Home, href: "/", keywords: ["home", "public"] },
 ]
