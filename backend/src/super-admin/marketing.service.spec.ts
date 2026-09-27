@@ -14,6 +14,8 @@ type Campaign = {
 type Attribution = {
     source: string;
     createdAt: Date;
+    /** When the ORDER was placed, which is what the window filters on. */
+    orderCreatedAt?: Date;
     order: { totalAmount: number; status: string } | null;
 };
 
@@ -46,7 +48,20 @@ function buildPrismaStub(options: {
 
     return {
         campaign: { findMany: jest.fn(async () => campaigns) },
-        attribution: { findMany: jest.fn(async () => attributions) },
+        attribution: {
+            findMany: jest.fn(async ({ where }: any = {}) => {
+                // Mirror the service's filter: attributions are selected by their
+                // ORDER's createdAt and status, not the attribution row's own.
+                const since: Date | undefined = where?.order?.createdAt?.gte;
+                const excluded: string | undefined = where?.order?.status?.not;
+                return attributions.filter((row) => {
+                    if (row.order === null) return false;
+                    if (since && row.orderCreatedAt && row.orderCreatedAt < since) return false;
+                    if (excluded && row.order.status === excluded) return false;
+                    return true;
+                });
+            }),
+        },
         order: { count: jest.fn(async () => ordersInWindow) },
         shop: {
             count: jest.fn(async ({ where }: any = {}) => {
@@ -105,6 +120,7 @@ function attribution(overrides: Partial<Attribution> = {}): Attribution {
     return {
         source: 'INSTAGRAM',
         createdAt: new Date(),
+        orderCreatedAt: new Date(),
         order: { totalAmount: 100, status: 'COMPLETED' },
         ...overrides,
     };
@@ -195,6 +211,40 @@ describe('MarketingService.getOverview', () => {
         const result = await new MarketingService(prisma).getOverview();
 
         expect(result.attribution.attributedOrders).toBe(1);
+    });
+
+    it('never reports coverage above 100% for a late-written attribution', async () => {
+        const now = Date.now();
+        const prisma = buildPrismaStub({
+            attributions: [
+                // Attribution row written yesterday, but its order is 200 days old:
+                // outside the window, so it must not count in the numerator either.
+                attribution({
+                    createdAt: new Date(now - 1 * 86_400_000),
+                    orderCreatedAt: new Date(now - 200 * 86_400_000),
+                }),
+                attribution({ orderCreatedAt: new Date(now) }),
+            ],
+            ordersInWindow: 1,
+        });
+
+        const result = await new MarketingService(prisma).getOverview();
+
+        expect(result.attribution.attributedOrders).toBe(1);
+        expect(result.attribution.coverage).toBeLessThanOrEqual(100);
+        expect(result.attribution.coverage).toBe(100);
+    });
+
+    it('reports no reach for an audience it does not recognise', async () => {
+        const prisma = buildPrismaStub({
+            announcements: [announcement({ id: 'a1', audience: 'BETA' })],
+            shopCounts: { all: 20, byStatus: { TRIAL: 5 } },
+        });
+
+        const result = await new MarketingService(prisma).getOverview();
+
+        // Must not silently mean "everyone" and overstate reach as 20.
+        expect(result.announcements[0].reach).toBe(0);
     });
 
     it('resolves the live audience size for each announcement', async () => {

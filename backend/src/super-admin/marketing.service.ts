@@ -67,8 +67,14 @@ export class MarketingService {
                 include: { shop: { select: { name: true } } },
                 orderBy: { createdAt: 'desc' },
             }),
+            // Filtered on the ORDER's createdAt, not the Attribution row's. An
+            // attribution written later than its order (a backfill) would otherwise
+            // count in the numerator while its order fell outside the denominator,
+            // letting coverage exceed 100%.
             this.prisma.attribution.findMany({
-                where: { createdAt: { gte: since } },
+                where: {
+                    order: { createdAt: { gte: since }, status: { not: 'CANCELLED' } },
+                },
                 include: { order: { select: { totalAmount: true, status: true } } },
             }),
             this.prisma.order.count({
@@ -203,9 +209,16 @@ export class MarketingService {
     }
 
     private async countAudience(audience: string): Promise<number> {
+        // `undefined` means the stored audience is not one we recognise (the column
+        // is a free String). Reporting the whole platform for it would overstate
+        // reach, so an unknown audience reaches nobody until it is understood.
+        if (!(audience in AUDIENCE_SUBSCRIPTION_STATUSES)) {
+            return 0;
+        }
+
         const statuses = AUDIENCE_SUBSCRIPTION_STATUSES[audience as AnnouncementAudience];
 
-        if (statuses === null || statuses === undefined) {
+        if (statuses === null) {
             return this.prisma.shop.count({ where: { isActive: true } });
         }
 

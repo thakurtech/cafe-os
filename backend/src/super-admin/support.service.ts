@@ -183,15 +183,17 @@ export class SupportService {
         dto: ReplyToTicketDto,
         author: { userId?: string; role?: string },
     ) {
-        const ticket = await this.prisma.supportTicket.findUnique({ where: { id: ticketId } });
-
-        if (!ticket) {
-            throw new NotFoundException('Ticket not found');
-        }
-
         const isInternal = dto.isInternal === true;
 
         return this.prisma.$transaction(async (tx) => {
+            // Read inside the transaction: reading first and then writing a value
+            // derived from that read let a concurrent close be silently reverted.
+            const ticket = await tx.supportTicket.findUnique({ where: { id: ticketId } });
+
+            if (!ticket) {
+                throw new NotFoundException('Ticket not found');
+            }
+
             const reply = await tx.supportTicketReply.create({
                 data: {
                     ticketId,

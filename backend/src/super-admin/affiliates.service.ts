@@ -155,6 +155,25 @@ export class AffiliatesService {
                 );
             }
 
+            const account = await tx.affiliateAccount.findUnique({
+                where: { id: payout.affiliateId },
+                select: { balance: true },
+            });
+
+            if (!account) {
+                throw new NotFoundException('Affiliate account not found');
+            }
+
+            // Payout rows are created out of band, so the amount is untrusted.
+            // Settling more than the account holds would leave a negative balance
+            // that nothing later reconciles, and the affiliate would be shown a
+            // negative claimable figure.
+            if (payout.amount > account.balance) {
+                throw new BadRequestException(
+                    `Payout of ${payout.amount} exceeds the affiliate's balance of ${account.balance}`,
+                );
+            }
+
             const claimed = await tx.affiliatePayout.updateMany({
                 where: { id: payoutId, status: PAYOUT_PENDING },
                 data: { status: PAYOUT_PAID },
@@ -164,7 +183,7 @@ export class AffiliatesService {
                 throw new BadRequestException('Payout was already processed');
             }
 
-            const account = await tx.affiliateAccount.update({
+            const settled = await tx.affiliateAccount.update({
                 where: { id: payout.affiliateId },
                 data: { balance: { decrement: payout.amount } },
             });
@@ -174,7 +193,7 @@ export class AffiliatesService {
                 payoutId,
                 amount: payout.amount,
                 status: PAYOUT_PAID,
-                remainingBalance: this.round(account.balance),
+                remainingBalance: this.round(settled.balance),
             };
         });
     }

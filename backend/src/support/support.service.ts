@@ -76,15 +76,19 @@ export class CafeSupportService {
      */
     async replyToMyTicket(ticketId: string, dto: CafeReplyDto, userId: string) {
         const shopId = await this.resolveShopId(userId);
-        const ticket = await this.prisma.supportTicket.findUnique({ where: { id: ticketId } });
-
-        if (!ticket) {
-            throw new NotFoundException('Ticket not found');
-        }
-
-        this.assertOwnedBy(ticket.shopId, shopId);
 
         return this.prisma.$transaction(async (tx) => {
+            // Read inside the transaction. Reading the status first and writing based
+            // on it let a reply that raced a close reopen a CLOSED ticket, which this
+            // method explicitly promises not to do.
+            const ticket = await tx.supportTicket.findUnique({ where: { id: ticketId } });
+
+            if (!ticket) {
+                throw new NotFoundException('Ticket not found');
+            }
+
+            this.assertOwnedBy(ticket.shopId, shopId);
+
             const reply = await tx.supportTicketReply.create({
                 data: {
                     ticketId,

@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Orders in these states never count towards revenue or volume.
 const EXCLUDED_ORDER_STATUSES = ['CANCELLED'] as const;
@@ -252,13 +251,41 @@ export class SuperAdminService {
         return subscriptionStatus.toLowerCase();
     }
 
+    /**
+     * Day-aligned windows. "Last N days" means N whole calendar days ending today,
+     * so neither the first nor the last bucket is a partial day and the two windows
+     * compared for growth cover the same span. A timestamp-based window (now minus
+     * N*24h) made the oldest and newest buckets partial, which drew a fake dip at
+     * the left edge of every chart.
+     *
+     * Local time throughout, matching the ordersToday KPI and the hour-of-day
+     * buckets, so all three cut the day at the same instant. Deployments outside
+     * UTC should set TZ accordingly.
+     */
     private periodBounds(days: number) {
         const now = new Date();
-        return {
-            now,
-            currentStart: new Date(now.getTime() - days * DAY_MS),
-            previousStart: new Date(now.getTime() - 2 * days * DAY_MS),
-        };
+
+        const currentStart = this.startOfLocalDay(now);
+        currentStart.setDate(currentStart.getDate() - (days - 1));
+
+        const previousStart = new Date(currentStart);
+        previousStart.setDate(previousStart.getDate() - days);
+
+        return { now, currentStart, previousStart };
+    }
+
+    private startOfLocalDay(date: Date): Date {
+        const copy = new Date(date);
+        copy.setHours(0, 0, 0, 0);
+        return copy;
+    }
+
+    /** Local calendar date as YYYY-MM-DD, to match the local-midnight bounds. */
+    private dayKey(date: Date): string {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 
     private normaliseDays(days: number) {
@@ -287,16 +314,19 @@ export class SuperAdminService {
     ) {
         const buckets = new Map<string, { date: string; orders: number; revenue: number }>();
 
-        // Pre-seed every day in the window so gaps render as zero rather than vanishing.
-        // Inclusive of both ends: `from` is now - days, so the final bucket is today.
-        for (let offset = 0; offset <= days; offset++) {
-            const key = new Date(from.getTime() + offset * DAY_MS).toISOString().split('T')[0];
+        // Pre-seed every day so a quiet day renders as zero rather than vanishing.
+        // `from` is the first day's local midnight, so exactly `days` buckets cover
+        // the window and the last one is today. Stepping with setDate rather than
+        // adding 24h keeps keys correct across a DST change.
+        const cursor = new Date(from);
+        for (let offset = 0; offset < days; offset++) {
+            const key = this.dayKey(cursor);
             buckets.set(key, { date: key, orders: 0, revenue: 0 });
+            cursor.setDate(cursor.getDate() + 1);
         }
 
         orders.forEach((order) => {
-            const key = order.createdAt.toISOString().split('T')[0];
-            const bucket = buckets.get(key);
+            const bucket = buckets.get(this.dayKey(order.createdAt));
             if (!bucket) return;
             bucket.orders++;
             bucket.revenue += order.totalAmount;

@@ -3,6 +3,14 @@ import { PrismaService } from '../prisma.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Mirrors the service's local-time bucket key, so the test is timezone-independent. */
+function localDayKey(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 type OrderRow = {
     shopId: string;
     totalAmount: number;
@@ -85,7 +93,7 @@ describe('SuperAdminService.getPlatformAnalytics', () => {
 
         const result = await new SuperAdminService(prisma).getPlatformAnalytics(30);
 
-        const todayKey = today.toISOString().split('T')[0];
+        const todayKey = localDayKey(today);
         const todayBucket = result.timeseries.find((point) => point.date === todayKey);
 
         expect(todayBucket).toBeDefined();
@@ -105,9 +113,11 @@ describe('SuperAdminService.getPlatformAnalytics', () => {
 
         const result = await new SuperAdminService(prisma).getPlatformAnalytics(7);
 
-        // 7-day window, inclusive of both ends.
-        expect(result.timeseries).toHaveLength(8);
-        expect(result.timeseries.filter((point) => point.orders === 0)).toHaveLength(7);
+        // 7 whole calendar days ending today: exactly 7 buckets, no partial ends.
+        expect(result.timeseries).toHaveLength(7);
+        expect(result.timeseries.filter((point) => point.orders === 0)).toHaveLength(6);
+        // The newest bucket is today.
+        expect(result.timeseries[6].date).toBe(localDayKey(new Date()));
         // Dates must come back in ascending order for the chart to read correctly.
         const dates = result.timeseries.map((point) => point.date);
         expect([...dates].sort()).toEqual(dates);

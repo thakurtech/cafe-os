@@ -39,6 +39,9 @@ function buildPrismaStub(accounts: Account[]) {
             }),
         },
         affiliateAccount: {
+            findUnique: jest.fn(async ({ where }: any) =>
+                accounts.find((item) => item.id === where.id) ?? null,
+            ),
             update: jest.fn(async ({ where, data }: any) => {
                 const account = accounts.find((item) => item.id === where.id);
                 if (!account) throw new Error('account missing');
@@ -188,6 +191,30 @@ describe('AffiliatesService.approvePayout', () => {
         const service = new AffiliatesService(buildPrismaStub([account()]));
 
         await expect(service.approvePayout('nope')).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('refuses a payout larger than the balance instead of going negative', async () => {
+        // Payout rows are created out of band, so the amount is untrusted.
+        const accounts = [
+            account({ balance: 100, payouts: [payout({ id: 'p1', amount: 500 })] }),
+        ];
+        const service = new AffiliatesService(buildPrismaStub(accounts));
+
+        await expect(service.approvePayout('p1')).rejects.toBeInstanceOf(BadRequestException);
+        expect(accounts[0].balance).toBe(100);
+        expect(accounts[0].payouts[0].status).toBe('PENDING');
+    });
+
+    it('allows a payout that exactly empties the balance', async () => {
+        const accounts = [
+            account({ balance: 500, payouts: [payout({ id: 'p1', amount: 500 })] }),
+        ];
+        const service = new AffiliatesService(buildPrismaStub(accounts));
+
+        const result = await service.approvePayout('p1');
+
+        expect(result.remainingBalance).toBe(0);
+        expect(accounts[0].balance).toBe(0);
     });
 
     it('will not approve a payout that was already rejected', async () => {
