@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font:14px system-ui,sans-serif;background:#fcfcfb}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<title>Menu Profit Scanner</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: a ledger sheet — verdict rail on top, editable dish ledger, then the quadrant map and the ranked money list. */
+:root{
+  --bg:#F3F6F3; --surface:#FCFCFB; --surface-2:#EDF2ED;
+  --ink:#141E18; --ink-2:#48584F; --ink-3:#7A8A80;
+  --rule:#D9E1DA; --rule-2:#C3CFC6;
+  --accent:#0E5C3F; --accent-ink:#FFFFFF; --accent-soft:#E2EFE7;
+  --q-star:#1F7A3A; --q-plow:#D18A00; --q-puzzle:#3A5FD9; --q-dog:#B02A2A;
+  --zone-star:rgba(31,122,58,.07); --zone-plow:rgba(209,138,0,.08);
+  --zone-puzzle:rgba(58,95,217,.07); --zone-dog:rgba(176,42,42,.07);
+  --grid:#E4EAE5;
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;
+  --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#111512; --surface:#1A1F1B; --surface-2:#222A24;
+  --ink:#E9F0EA; --ink-2:#A8B7AD; --ink-3:#7B8A80;
+  --rule:#2A332C; --rule-2:#3A453D;
+  --accent:#54C293; --accent-ink:#0B1710; --accent-soft:#1C2A22;
+  --q-star:#3E9E58; --q-plow:#B07E00; --q-puzzle:#5E82E0; --q-dog:#D2605A;
+  --zone-star:rgba(62,158,88,.12); --zone-plow:rgba(176,126,0,.14);
+  --zone-puzzle:rgba(94,130,224,.12); --zone-dog:rgba(210,96,90,.12);
+  --grid:#272F29;
+  color-scheme:dark;
+} }
+:root[data-theme="dark"]{
+  --bg:#111512; --surface:#1A1F1B; --surface-2:#222A24;
+  --ink:#E9F0EA; --ink-2:#A8B7AD; --ink-3:#7B8A80;
+  --rule:#2A332C; --rule-2:#3A453D;
+  --accent:#54C293; --accent-ink:#0B1710; --accent-soft:#1C2A22;
+  --q-star:#3E9E58; --q-plow:#B07E00; --q-puzzle:#5E82E0; --q-dog:#D2605A;
+  --zone-star:rgba(62,158,88,.12); --zone-plow:rgba(176,126,0,.14);
+  --zone-puzzle:rgba(94,130,224,.12); --zone-dog:rgba(210,96,90,.12);
+  --grid:#272F29;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+.wrap{max-width:1080px;margin:0 auto;padding-left:18px;padding-right:18px;padding-block:28px 56px;display:flex;flex-direction:column;gap:22px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.015em}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600;font-family:var(--body)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* masthead */
+.masthead{display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--rule);padding-bottom:20px}
+.masthead h1{font-size:clamp(30px,6vw,46px);font-weight:800;line-height:1.02}
+.masthead p{margin:0;color:var(--ink-2);max-width:62ch}
+.flag{display:inline-flex;align-items:center;gap:7px;align-self:flex-start;background:var(--surface-2);border:1px solid var(--rule);color:var(--ink-2);border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600}
+.flag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--q-plow)}
+
+/* verdict */
+.verdict{background:var(--surface);border:1px solid var(--rule);border-radius:4px;border-top:3px solid var(--accent);padding:22px;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1.3fr);gap:26px;align-items:center}
+.lead-label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+.bignum{font-family:var(--mono);font-weight:600;font-size:clamp(38px,8vw,62px);line-height:1;color:var(--accent);letter-spacing:-.03em;margin-top:6px;word-break:break-word}
+.lead-sub{color:var(--ink-2);font-size:14px;margin-top:9px}
+.lead-sub strong{color:var(--ink)}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--rule)}
+.tile{background:var(--surface);padding:13px 14px;min-width:0}
+.tile dt{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin:0}
+.tile dd{margin:5px 0 0;font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.02em}
+.tile .hint{display:block;font-family:var(--body);font-size:12px;color:var(--ink-3);margin-top:3px;letter-spacing:0}
+.ok{color:var(--q-star)} .warn{color:var(--q-plow)} .bad{color:var(--q-dog)}
+
+/* panels */
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:20px;min-width:0}
+.panel-head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+.panel-head h2{font-size:19px;font-weight:700}
+.panel-head p{margin:2px 0 0;font-size:13px;color:var(--ink-3);max-width:58ch}
+
+/* controls */
+.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(176px,1fr));gap:14px}
+label.field{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--ink-2);letter-spacing:.02em;min-width:0}
+input[type=number],input[type=text]{font-family:var(--mono);font-size:15px;background:var(--bg);color:var(--ink);border:1px solid var(--rule-2);border-radius:3px;padding:8px 9px;width:100%;min-width:0}
+input[type=text]{font-family:var(--body)}
+input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select{font-family:var(--body);font-size:14px;background:var(--bg);color:var(--ink);border:1px solid var(--rule-2);border-radius:3px;padding:8px 9px;width:100%}
+.switch{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink-2);font-weight:600;grid-column:span 2;align-self:end;padding-bottom:7px}
+.switch input{width:17px;height:17px;accent-color:var(--accent)}
+
+/* ledger table */
+.tscroll{overflow-x:auto;border:1px solid var(--rule);border-radius:3px}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:14px}
+th{font-family:var(--body);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);text-align:right;font-weight:700;padding:9px 10px;background:var(--surface-2);border-bottom:1px solid var(--rule-2);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:6px 10px;border-bottom:1px solid var(--rule);text-align:right;vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+td input{padding:6px 7px;font-size:14px}
+td input.dish-name{min-width:150px}
+td input.n{max-width:92px;text-align:right}
+.qtag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;font-family:var(--body)}
+.qdot{width:9px;height:9px;flex:none;display:inline-block}
+.q-star .qdot{background:var(--q-star);border-radius:50%}
+.q-plow .qdot{background:var(--q-plow)}
+.q-puzzle .qdot{background:var(--q-puzzle);transform:rotate(45deg)}
+.q-dog .qdot{background:var(--q-dog);clip-path:polygon(50% 0,100% 100%,0 100%)}
+.q-star{color:var(--q-star)} .q-plow{color:var(--q-plow)} .q-puzzle{color:var(--q-puzzle)} .q-dog{color:var(--q-dog)}
+tfoot td{font-family:var(--mono);font-weight:600;background:var(--surface-2);border-top:1px solid var(--rule-2);padding:10px}
+.rowbtn{background:none;border:1px solid var(--rule-2);color:var(--ink-3);border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:15px;line-height:1;font-family:var(--body)}
+.rowbtn:hover{border-color:var(--q-dog);color:var(--q-dog)}
+.btn{font-family:var(--body);font-size:14px;font-weight:600;border-radius:3px;padding:9px 15px;cursor:pointer;border:1px solid var(--rule-2);background:var(--bg);color:var(--ink)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn-primary:hover{color:var(--accent-ink);filter:brightness(1.08)}
+.btnrow{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px;align-items:center}
+
+/* quadrant map */
+.mapgrid{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:20px;align-items:start}
+.plotwrap{position:relative;min-width:0}
+svg.plot{width:100%;height:auto;display:block;overflow:visible}
+.legend{display:flex;flex-direction:column;gap:12px;font-size:13px}
+.legend h3{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:700;font-family:var(--body)}
+.legend-item{display:flex;gap:9px;align-items:flex-start}
+.legend-item .qdot{margin-top:5px}
+.legend-item b{display:block;font-size:12.5px}
+.legend-item span{color:var(--ink-3);font-size:12px;line-height:1.35}
+.tip{position:absolute;pointer-events:none;opacity:0;transition:opacity .09s;background:var(--ink);color:var(--bg);padding:8px 10px;border-radius:3px;font-size:12px;line-height:1.45;z-index:5;max-width:220px;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+.tip b{font-family:var(--body);font-size:12.5px}
+.tip .num{color:var(--bg)}
+.mark{cursor:pointer}
+
+/* actions */
+.acts{display:flex;flex-direction:column;gap:1px;background:var(--rule)}
+.act{background:var(--surface);display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:14px;align-items:center;padding:13px 2px 13px 0}
+.act .rank{font-family:var(--mono);font-size:13px;color:var(--ink-3);text-align:center}
+.act h3{font-size:15px;font-weight:700;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.act p{margin:3px 0 0;font-size:13.5px;color:var(--ink-2)}
+.act .money{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--accent);white-space:nowrap;text-align:right}
+.act .money small{display:block;font-family:var(--body);font-size:11px;color:var(--ink-3);font-weight:400;letter-spacing:.03em}
+.chip{font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;border:1px solid currentColor;border-radius:2px;padding:1px 5px}
+
+/* share */
+textarea{width:100%;min-height:150px;font-family:var(--mono);font-size:13px;line-height:1.6;background:var(--bg);color:var(--ink);border:1px solid var(--rule-2);border-radius:3px;padding:12px;resize:vertical}
+.toast{font-size:13px;color:var(--q-star);font-weight:600}
+
+/* pipeline */
+.pipe-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end}
+.pipe-list{display:flex;flex-direction:column;gap:1px;background:var(--rule);margin-top:16px}
+.pipe-row{background:var(--surface);display:flex;flex-wrap:wrap;gap:4px 14px;justify-content:space-between;align-items:baseline;padding:10px 0}
+.pipe-row b{font-size:14.5px}
+.pipe-row .meta{font-size:12px;color:var(--ink-3)}
+.pipe-row .amt{font-family:var(--mono);font-weight:600;color:var(--accent)}
+.empty{color:var(--ink-3);font-size:13.5px;font-style:italic;padding:10px 0}
+
+/* method */
+.assumptions{border-top:1px solid var(--rule);padding-top:20px;font-size:13px;color:var(--ink-3);display:flex;flex-direction:column;gap:9px}
+.assumptions h2{font-size:12px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);font-family:var(--body);font-weight:700}
+.assumptions ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:5px;max-width:78ch}
+.assumptions code{font-family:var(--mono);font-size:12px;background:var(--surface-2);padding:1px 4px;border-radius:2px;color:var(--ink-2)}
+
+@media (max-width:860px){
+  .verdict{grid-template-columns:1fr;gap:20px}
+  .mapgrid{grid-template-columns:1fr}
+  .legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+}
+@media (max-width:460px){
+  .tiles{grid-template-columns:1fr}
+  .switch{grid-column:span 1}
+  .act{grid-template-columns:22px minmax(0,1fr);gap:10px}
+  .act .money{grid-column:2;text-align:left}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<main class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Menu engineering for Indian cafés &amp; QSRs</div>
+    <h1>Your menu is leaking money. Here is exactly where.</h1>
+    <p>Put in what each item sells for, what the plate costs you, and how many go out a month. You get the food-cost truth after GST and wastage, the four menu quadrants, and a ranked list of price and portion moves with rupees attached.</p>
+    <span class="flag" id="dataFlag">Example café loaded — overwrite the rows with your own</span>
+  </header>
+
+  <section class="verdict" aria-labelledby="verdictLabel">
+    <div>
+      <div class="lead-label" id="verdictLabel">Recoverable every month</div>
+      <div class="bignum num" id="bigOpp">₹0</div>
+      <div class="lead-sub" id="bigSub"></div>
+    </div>
+    <dl class="tiles">
+      <div class="tile"><dt>Food cost</dt><dd class="num" id="tFc">—</dd><span class="hint" id="tFcHint"></span></div>
+      <div class="tile"><dt>Net revenue / month</dt><dd class="num" id="tRev">—</dd><span class="hint">After 5% GST is stripped out</span></div>
+      <div class="tile"><dt>Gross margin / month</dt><dd class="num" id="tCm">—</dd><span class="hint" id="tCmHint"></span></div>
+      <div class="tile"><dt>Profit after fixed costs</dt><dd class="num" id="tProfit">—</dd><span class="hint" id="tProfitHint"></span></div>
+    </dl>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><div><h2>Your numbers</h2><p>Restaurant GST in India is 5% with no input credit, so the price on the board is not your revenue. Wastage and free staff meals are real plate cost — put them in.</p></div></div>
+    <div class="settings">
+      <label class="field" for="setFixed">Fixed costs / month (rent, salaries, power)
+        <input type="number" id="setFixed" min="0" step="1000" value="320000"></label>
+      <label class="field" for="setWaste">Wastage &amp; spoilage %
+        <input type="number" id="setWaste" min="0" max="40" step="0.5" value="8"></label>
+      <label class="field" for="setTarget">Target food cost %
+        <input type="number" id="setTarget" min="10" max="60" step="1" value="30"></label>
+      <label class="switch" for="setGst"><input type="checkbox" id="setGst" checked> Menu prices include 5% GST</label>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><div><h2>Dish ledger</h2><p>Plate cost means raw material only — not labour or rent. Units are per month.</p></div></div>
+    <div class="tscroll">
+      <table id="ledger">
+        <thead><tr>
+          <th scope="col">Item</th><th scope="col">Price ₹</th><th scope="col">Plate cost ₹</th>
+          <th scope="col">Units / mo</th><th scope="col">Food cost</th><th scope="col">Margin ₹</th>
+          <th scope="col">Margin / mo</th><th scope="col">Quadrant</th><th scope="col"><span class="sr">Remove</span></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+        <tfoot id="foot"></tfoot>
+      </table>
+    </div>
+    <div class="btnrow">
+      <button class="btn" id="addRow" type="button">+ Add item</button>
+      <button class="btn" id="resetBtn" type="button">Reset to example café</button>
+      <span class="toast" id="savedToast" hidden>Saved on this device</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><div><h2>The four quadrants</h2><p>Popularity against rupee margin. The Kasavana–Smith cut is 70% of an even share of covers; the margin cut is your own weighted average.</p></div></div>
+    <div class="mapgrid">
+      <div class="plotwrap" id="plotwrap">
+        <svg class="plot" id="plot" viewBox="0 0 660 440" role="img" aria-labelledby="plotTitle"><title id="plotTitle">Menu items plotted by popularity share against contribution margin per unit</title></svg>
+        <div class="tip" id="tip" role="status" aria-live="polite"></div>
+      </div>
+      <div class="legend">
+        <h3>How to read it</h3>
+        <div class="legend-item q-star"><span class="qdot"></span><div><b>Star</b><span>Sells well, earns well. Protect the recipe, never discount it.</span></div></div>
+        <div class="legend-item q-plow"><span class="qdot"></span><div><b>Plowhorse</b><span>Sells well, earns little. Reprice in ₹5 steps or cut the plate cost.</span></div></div>
+        <div class="legend-item q-puzzle"><span class="qdot"></span><div><b>Puzzle</b><span>Earns well, nobody orders it. Move it up the card and brief the staff.</span></div></div>
+        <div class="legend-item q-dog"><span class="qdot"></span><div><b>Dog</b><span>Neither sells nor earns. Delist and push those covers to a Star.</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><div><h2>Ranked moves</h2><p>Biggest rupee gain first. Each line is one decision you can take tomorrow morning.</p></div></div>
+    <div class="acts" id="acts"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><div><h2>Send the owner the summary</h2><p>Copy this into WhatsApp. It is written to be read on a phone in fifteen seconds.</p></div></div>
+    <textarea id="shareText" readonly aria-label="Shareable summary"></textarea>
+    <div class="btnrow">
+      <button class="btn btn-primary" id="copyBtn" type="button">Copy summary</button>
+      <span class="toast" id="copyToast" hidden>Copied</span>
+    </div>
+  </section>
+
+  <section class="panel" id="pipePanel" hidden>
+    <div class="panel-head"><div><h2>Scan pipeline</h2><p>Every café you scan, saved with its number. This is your follow-up list.</p></div></div>
+    <div class="pipe-form">
+      <label class="field" for="pCafe">Café name<input type="text" id="pCafe" placeholder="Brew Lane, Koramangala"></label>
+      <label class="field" for="pContact">Owner &amp; phone<input type="text" id="pContact" placeholder="Rohit · 98xxxxxxxx"></label>
+      <button class="btn btn-primary" id="pSave" type="button">Save this scan</button>
+    </div>
+    <div class="pipe-list" id="pipeList"><div class="empty">No scans saved yet.</div></div>
+  </section>
+
+  <footer class="assumptions">
+    <h2>How the recoverable number is worked out</h2>
+    <ol>
+      <li>Net price is the menu price divided by 1.05 when prices include GST. Plate cost is grossed up by the wastage percentage, so <code>food cost % = plate cost × (1 + wastage) ÷ net price</code>.</li>
+      <li><b>Plowhorse</b>: price is lifted in ₹5 steps until the item reaches the menu's average rupee margin, capped at +15%, and 6% of its volume is assumed lost. Where trimming the plate cost to your target food cost pays more, that number is used instead. Only the larger of the two is counted, never both.</li>
+      <li><b>Puzzle</b>: a 25% volume lift from card placement, a staff upsell line and a photo. This is the softest assumption here — treat it as a test, not a forecast.</li>
+      <li><b>Dog</b>: delisted, with 30% of its covers moving to your highest-margin Star.</li>
+      <li><b>Wastage</b>: bringing spoilage down to 3% of plate cost, which is where a café with daily indent discipline lands.</li>
+      <li>Every figure is an estimate built on the numbers you typed. It is a conversation starter for a priced decision, not an audited projection — and it assumes your plate costs are honest.</li>
+    </ol>
+  </footer>
+
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var INR = new Intl.NumberFormat('en-IN',{maximumFractionDigits:0});
+  var INR1 = new Intl.NumberFormat('en-IN',{maximumFractionDigits:1});
+  function money(n){ return '₹' + INR.format(Math.round(n||0)); }
+  function pct(n){ return INR1.format(n||0) + '%'; }
+  var QUAD = {
+    star:{label:'Star',cls:'q-star',color:'--q-star'},
+    plow:{label:'Plowhorse',cls:'q-plow',color:'--q-plow'},
+    puzzle:{label:'Puzzle',cls:'q-puzzle',color:'--q-puzzle'},
+    dog:{label:'Dog',cls:'q-dog',color:'--q-dog'}
+  };
+  var EXAMPLE = [
+    {n:'Masala Chai',          p:60,  c:11, u:2400},
+    {n:'Cappuccino',           p:180, c:38, u:1100},
+    {n:'Cold Coffee',          p:160, c:52, u:1350},
+    {n:'Veg Club Sandwich',    p:210, c:88, u:760},
+    {n:'Cheese Garlic Bread',  p:190, c:46, u:900},
+    {n:'Paneer Tikka Wrap',    p:260, c:112,u:540},
+    {n:'Chocolate Brownie',    p:150, c:34, u:420},
+    {n:'Fresh Lime Soda',      p:110, c:18, u:300},
+    {n:'Mushroom Risotto',     p:420, c:196,u:95},
+    {n:'Iced Tea Peach',       p:140, c:62, u:120}
+  ];
+  var LS = 'mps.sheet.v1';
+  var state = { gst:true, waste:8, target:30, fixed:320000, dishes:EXAMPLE.map(function(d){return{n:d.n,p:d.p,c:d.c,u:d.u};}), custom:false };
+
+  try { var raw = localStorage.getItem(LS); if(raw){ var o=JSON.parse(raw); if(o&&o.dishes&&o.dishes.length){ state=o; } } } catch(e){}
+
+  function persist(){
+    try { localStorage.setItem(LS, JSON.stringify(state)); } catch(e){}
+    var t=document.getElementById('savedToast');
+    if(state.custom){ t.hidden=false; }
+  }
+
+  /* ---------- model ---------- */
+  function compute(){
+    var gstDiv = state.gst ? 1.05 : 1;
+    var wasteMul = 1 + (Number(state.waste)||0)/100;
+    var items = state.dishes.map(function(d){
+      var price=Number(d.p)||0, cost=Number(d.c)||0, units=Math.max(0,Number(d.u)||0);
+      var net = price/gstDiv;
+      var eff = cost*wasteMul;
+      var cm = net-eff;
+      return { n:(d.n||'Untitled').trim()||'Untitled', price:price, cost:cost, units:units,
+               net:net, eff:eff, cm:cm, fc: net>0 ? eff/net*100 : 0,
+               rev:net*units, cmTotal:cm*units, rawCost:cost*units };
+    });
+    var live = items.filter(function(i){ return i.units>0 && i.net>0; });
+    var totUnits = live.reduce(function(a,i){return a+i.units;},0);
+    var rev = live.reduce(function(a,i){return a+i.rev;},0);
+    var cmTot = live.reduce(function(a,i){return a+i.cmTotal;},0);
+    var costTot = live.reduce(function(a,i){return a+i.eff*i.units;},0);
+    var rawCostTot = live.reduce(function(a,i){return a+i.rawCost;},0);
+    var avgCm = totUnits>0 ? cmTot/totUnits : 0;
+    var popCut = live.length>0 ? (1/live.length)*0.70 : 0;
+    items.forEach(function(i){
+      i.pop = totUnits>0 ? i.units/totUnits : 0;
+      var hiPop = i.pop >= popCut, hiCm = i.cm >= avgCm;
+      i.q = hiPop ? (hiCm?'star':'plow') : (hiCm?'puzzle':'dog');
+      if(i.units<=0 || i.net<=0) i.q = 'dog';
+    });
+    return { items:items, live:live, totUnits:totUnits, rev:rev, cmTot:cmTot, costTot:costTot,
+             rawCostTot:rawCostTot, avgCm:avgCm, popCut:popCut,
+             fcPct: rev>0 ? costTot/rev*100 : 0,
+             profit: cmTot - (Number(state.fixed)||0) };
+  }
+
+  function levers(m){
+    var out=[], target=Number(state.target)||30, gstMul = state.gst?1.05:1;
+    var stars = m.live.filter(function(i){return i.q==='star';});
+    var bestStar = stars.reduce(function(a,i){ return (!a||i.cm>a.cm)?i:a; }, null);
+
+    m.live.forEach(function(i){
+      if(i.q==='plow' || i.q==='star'){
+        var repriceGain=0, newPrice=0;
+        if(i.q==='plow'){
+          var neededGross = (i.eff + m.avgCm)*gstMul;
+          var capped = i.price*1.15;
+          newPrice = Math.ceil(neededGross/5)*5;
+          if(newPrice>capped) newPrice = Math.floor(capped/5)*5;
+          if(newPrice>i.price){
+            var newCm = newPrice/gstMul - i.eff;
+            repriceGain = newCm*i.units*0.94 - i.cmTotal;
+          }
+        }
+        var targetCost = target/100*i.net;
+        var trimGain = i.eff>targetCost ? (i.eff-targetCost)*i.units : 0;
+        if(i.q==='star' && i.fc <= target+5) trimGain = 0;
+
+        if(repriceGain>=trimGain && repriceGain>0){
+          out.push({ q:i.q, dish:i.n, amount:repriceGain,
+            title:'Reprice ' + i.n + ' to ₹' + newPrice,
+            detail:'At ₹'+i.price+' it earns '+money(i.cm)+' a plate against a menu average of '+money(m.avgCm)+'. ₹'+newPrice+' is a '+INR1.format((newPrice/i.price-1)*100)+'% move — small enough that regulars rarely blink. Assumes 6% of its '+INR.format(i.units)+' monthly covers walk away.' });
+        } else if(trimGain>0){
+          out.push({ q:i.q, dish:i.n, amount:trimGain,
+            title:'Cut plate cost on ' + i.n + ' from ₹'+INR1.format(i.eff)+' to ₹'+INR1.format(targetCost),
+            detail:'Food cost is '+pct(i.fc)+' against your '+target+'% target. Weigh the portion, fix the gram spec, and renegotiate the one ingredient that dominates the plate. Across '+INR.format(i.units)+' covers a month that gap is real money.' });
+        }
+      }
+      if(i.q==='puzzle'){
+        var gain = i.cmTotal*0.25;
+        if(gain>0) out.push({ q:'puzzle', dish:i.n, amount:gain,
+          title:'Push ' + i.n + ' — ' + money(i.cm) + ' a plate and nobody orders it',
+          detail:'It is '+pct(i.pop*100)+' of your covers while earning above average. Move it into the top-right block of the card, give it a photo, and make it the line every server says out loud. Assumes a 25% volume lift.' });
+      }
+      if(i.q==='dog' && bestStar && bestStar.cm>i.cm){
+        var g = (bestStar.cm - i.cm)*i.units*0.30;
+        if(g>0) out.push({ q:'dog', dish:i.n, amount:g,
+          title:'Delist ' + i.n,
+          detail:'Only '+INR.format(i.units)+' covers a month at '+money(i.cm)+' a plate. Taking it off shortens the card and frees prep time; assumes 30% of those covers move to '+bestStar.n+' at '+money(bestStar.cm)+'.' });
+      }
+    });
+
+    var w = Number(state.waste)||0;
+    if(w>3 && m.rawCostTot>0){
+      out.push({ q:'star', dish:'Kitchen', amount:m.rawCostTot*(w-3)/100,
+        title:'Bring wastage from '+INR1.format(w)+'% down to 3%',
+        detail:'Daily indent against actual sales, FIFO on the cold storage, and a written staff-meal policy. On '+money(m.rawCostTot)+' of monthly raw material, every point of spoilage is '+money(m.rawCostTot/100)+'.' });
+    }
+    out.sort(function(a,b){return b.amount-a.amount;});
+    return out;
+  }
+
+  /* ---------- render ---------- */
+  function el(tag, cls, text){ var e=document.createElement(tag); if(cls)e.className=cls; if(text!=null)e.textContent=text; return e; }
+
+  function renderRows(m){
+    var tb=document.getElementById('rows'); tb.textContent='';
+    m.items.forEach(function(i, idx){
+      var tr=el('tr');
+      function cell(kind, key, val, cls){
+        var td=el('td'); var inp=document.createElement('input');
+        inp.type = kind; inp.value = val; inp.className = cls;
+        if(kind==='number'){ inp.min='0'; inp.step = key==='u'?'10':'1'; }
+        inp.setAttribute('aria-label', key==='n'?'Item name':(key==='p'?'Price':(key==='c'?'Plate cost':'Units per month')));
+        inp.id = 'f-'+key+'-'+idx;
+        inp.addEventListener('input', function(){
+          state.dishes[idx][key] = kind==='number' ? Number(inp.value) : inp.value;
+          state.custom=true; persist(); paint(true);
+        });
+        td.appendChild(inp); return td;
+      }
+      tr.appendChild(cell('text','n',i.n,'dish-name'));
+      tr.appendChild(cell('number','p',i.price,'n'));
+      tr.appendChild(cell('number','c',i.cost,'n'));
+      tr.appendChild(cell('number','u',i.units,'n'));
+      var fcTd=el('td','num'); fcTd.id='c-fc-'+idx; tr.appendChild(fcTd);
+      var cmTd=el('td','num'); cmTd.id='c-cm-'+idx; tr.appendChild(cmTd);
+      var ctTd=el('td','num'); ctTd.id='c-ct-'+idx; tr.appendChild(ctTd);
+      var qt=el('td'); qt.id='c-q-'+idx; tr.appendChild(qt);
+      var rm=el('td'); var b=el('button','rowbtn','\u00d7'); b.type='button';
+      b.title='Remove '+i.n; b.setAttribute('aria-label','Remove '+i.n);
+      b.addEventListener('click',function(){ state.dishes.splice(idx,1); state.custom=true; persist(); paint(); });
+      rm.appendChild(b); tr.appendChild(rm); tb.appendChild(tr);
+    });
+    var tf=document.getElementById('foot'); tf.textContent='';
+    var ftr=el('tr');
+    ['f-items','','','f-units','f-fc','f-avgcm','f-cm','',''].forEach(function(id){
+      var td=el('td',null,''); if(id) td.id=id; ftr.appendChild(td);
+    });
+    tf.appendChild(ftr);
+  }
+
+  function updateComputed(m){
+    var tgt=Number(state.target)||30;
+    m.items.forEach(function(i, idx){
+      var fcTd=document.getElementById('c-fc-'+idx); if(!fcTd) return;
+      fcTd.textContent=pct(i.fc);
+      fcTd.className='num '+(i.fc>tgt+8?'bad':(i.fc>tgt?'warn':'ok'));
+      document.getElementById('c-cm-'+idx).textContent=money(i.cm);
+      document.getElementById('c-ct-'+idx).textContent=money(i.cmTotal);
+      var qt=document.getElementById('c-q-'+idx); qt.textContent='';
+      var tag=el('span','qtag '+QUAD[i.q].cls);
+      tag.appendChild(el('span','qdot'));
+      tag.appendChild(document.createTextNode(QUAD[i.q].label));
+      qt.appendChild(tag);
+      var nameInp=document.getElementById('f-n-'+idx);
+      if(nameInp){ var rm=nameInp.closest('tr').lastChild.firstChild;
+        if(rm){ rm.title='Remove '+i.n; rm.setAttribute('aria-label','Remove '+i.n); } }
+    });
+    function set(id,txt){ var e=document.getElementById(id); if(e) e.textContent=txt; }
+    set('f-items', m.items.length+' items');
+    set('f-units', INR.format(m.totUnits));
+    set('f-fc', pct(m.fcPct));
+    set('f-avgcm', money(m.avgCm));
+    set('f-cm', money(m.cmTot));
+  }
+
+  function cssv(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  function renderPlot(m){
+    var svg=document.getElementById('plot');
+    while(svg.lastChild && svg.lastChild.nodeName!=='title') svg.removeChild(svg.lastChild);
+    var NS='http://www.w3.org/2000/svg';
+    function mk(t,a){ var e=document.createElementNS(NS,t); for(var k in a) e.setAttribute(k,a[k]); return e; }
+    var L=74,R=24,T=20,B=52, W=660,H=440, pw=W-L-R, ph=H-T-B;
+    var live=m.live;
+    if(!live.length){
+      var tx=mk('text',{x:W/2,y:H/2,'text-anchor':'middle',fill:cssv('--ink-3'),'font-size':'15','font-family':'var(--body)'});
+      tx.textContent='Add an item with a price and monthly units to see the map.'; svg.appendChild(tx); return;
+    }
+    var maxPop=Math.max.apply(null,live.map(function(i){return i.pop;}))*1.18;
+    var maxCm=Math.max.apply(null,live.map(function(i){return i.cm;}));
+    var minCm=Math.min(0,Math.min.apply(null,live.map(function(i){return i.cm;})));
+    var cmHi=maxCm*1.15, cmLo=minCm<0?minCm*1.2:0;
+    var X=function(p){ return L + (p/maxPop)*pw; };
+    var Y=function(c){ return T + ph - ((c-cmLo)/(cmHi-cmLo))*ph; };
+    var xc=X(m.popCut), yc=Y(m.avgCm);
+
+    // quadrant zones
+    var zones=[[L,T,xc-L,yc-T,'--zone-puzzle'],[xc,T,L+pw-xc,yc-T,'--zone-star'],
+               [L,yc,xc-L,T+ph-yc,'--zone-dog'],[xc,yc,L+pw-xc,T+ph-yc,'--zone-plow']];
+    zones.forEach(function(z){ if(z[2]>0&&z[3]>0) svg.appendChild(mk('rect',{x:z[0],y:z[1],width:z[2],height:z[3],fill:cssv(z[4])})); });
+
+    // grid
+    for(var g=0;g<=4;g++){
+      var gy=T+ph*(g/4);
+      svg.appendChild(mk('line',{x1:L,y1:gy,x2:L+pw,y2:gy,stroke:cssv('--grid'),'stroke-width':1}));
+      var v=cmHi-(cmHi-cmLo)*(g/4);
+      var lb=mk('text',{x:L-10,y:gy+4,'text-anchor':'end',fill:cssv('--ink-3'),'font-size':'11','font-family':'IBM Plex Mono, monospace'});
+      lb.textContent='₹'+INR.format(v); svg.appendChild(lb);
+    }
+    // cut lines
+    svg.appendChild(mk('line',{x1:xc,y1:T,x2:xc,y2:T+ph,stroke:cssv('--rule-2'),'stroke-width':2,'stroke-dasharray':'5 4'}));
+    svg.appendChild(mk('line',{x1:L,y1:yc,x2:L+pw,y2:yc,stroke:cssv('--rule-2'),'stroke-width':2,'stroke-dasharray':'5 4'}));
+    // axes
+    svg.appendChild(mk('line',{x1:L,y1:T+ph,x2:L+pw,y2:T+ph,stroke:cssv('--rule-2'),'stroke-width':1}));
+    svg.appendChild(mk('line',{x1:L,y1:T,x2:L,y2:T+ph,stroke:cssv('--rule-2'),'stroke-width':1}));
+    for(var k=0;k<=4;k++){
+      var xv=maxPop*(k/4), gx=X(xv);
+      var xl=mk('text',{x:gx,y:T+ph+20,'text-anchor':'middle',fill:cssv('--ink-3'),'font-size':'11','font-family':'IBM Plex Mono, monospace'});
+      xl.textContent=INR1.format(xv*100)+'%'; svg.appendChild(xl);
+    }
+    var ax=mk('text',{x:L+pw/2,y:H-14,'text-anchor':'middle',fill:cssv('--ink-2'),'font-size':'12','font-weight':'600','font-family':'Source Sans 3, sans-serif'});
+    ax.textContent='Share of total covers'; svg.appendChild(ax);
+    var ay=mk('text',{x:16,y:T+ph/2,'text-anchor':'middle',fill:cssv('--ink-2'),'font-size':'12','font-weight':'600',transform:'rotate(-90 16 '+(T+ph/2)+')','font-family':'Source Sans 3, sans-serif'});
+    ay.textContent='Margin per plate'; svg.appendChild(ay);
+
+    // quadrant captions
+    var caps=[['Puzzle',L+10,T+18,'--q-puzzle','start'],['Star',L+pw-10,T+18,'--q-star','end'],
+              ['Dog',L+10,T+ph-10,'--q-dog','start'],['Plowhorse',L+pw-10,T+ph-10,'--q-plow','end']];
+    caps.forEach(function(c){
+      var t=mk('text',{x:c[1],y:c[2],fill:cssv(c[3]),'font-size':'11','font-weight':'700','text-anchor':c[4],'letter-spacing':'0.08em','font-family':'Source Sans 3, sans-serif'});
+      t.textContent=c[0].toUpperCase(); svg.appendChild(t);
+    });
+
+    var tip=document.getElementById('tip'), wrap=document.getElementById('plotwrap');
+    function shape(q,x,y,fill){
+      if(q==='star') return mk('circle',{cx:x,cy:y,r:7.5,fill:fill,stroke:cssv('--surface'),'stroke-width':2});
+      if(q==='plow') return mk('rect',{x:x-6.5,y:y-6.5,width:13,height:13,fill:fill,stroke:cssv('--surface'),'stroke-width':2});
+      if(q==='puzzle') return mk('rect',{x:x-6.5,y:y-6.5,width:13,height:13,fill:fill,stroke:cssv('--surface'),'stroke-width':2,transform:'rotate(45 '+x+' '+y+')'});
+      return mk('polygon',{points:(x)+','+(y-8)+' '+(x+8)+','+(y+6)+' '+(x-8)+','+(y+6),fill:fill,stroke:cssv('--surface'),'stroke-width':2});
+    }
+    var sorted=live.slice().sort(function(a,b){return b.cmTotal-a.cmTotal;});
+    var labelled=sorted.slice(0,4);
+    live.forEach(function(i){
+      var x=X(i.pop), y=Y(i.cm), fill=cssv(QUAD[i.q].color);
+      var hit=mk('circle',{cx:x,cy:y,r:16,fill:'transparent',class:'mark',tabindex:'0'});
+      var s=shape(i.q,x,y,fill); s.setAttribute('class','mark'); s.setAttribute('pointer-events','none');
+      svg.appendChild(s); svg.appendChild(hit);
+      function show(){
+        tip.textContent='';
+        var b=el('b',null,i.n); tip.appendChild(b);
+        tip.appendChild(document.createElement('br'));
+        tip.appendChild(document.createTextNode(QUAD[i.q].label+' · '+pct(i.pop*100)+' of covers'));
+        tip.appendChild(document.createElement('br'));
+        tip.appendChild(document.createTextNode(money(i.cm)+' a plate · '+pct(i.fc)+' food cost'));
+        tip.appendChild(document.createElement('br'));
+        tip.appendChild(document.createTextNode(money(i.cmTotal)+' a month'));
+        var rect=wrap.getBoundingClientRect(), sv=svg.getBoundingClientRect();
+        var px=sv.left-rect.left + (x/W)*sv.width, py=sv.top-rect.top + (y/H)*sv.height;
+        tip.style.left=Math.max(4,Math.min(px+14, rect.width-210))+'px';
+        tip.style.top=Math.max(4,py-62)+'px';
+        tip.style.opacity='1';
+      }
+      function hide(){ tip.style.opacity='0'; }
+      hit.addEventListener('mouseenter',show); hit.addEventListener('mouseleave',hide);
+      hit.addEventListener('focus',show); hit.addEventListener('blur',hide);
+      if(labelled.indexOf(i)>-1){
+        var dx = x > L+pw*0.72 ? -12 : 12;
+        var lt=mk('text',{x:x+dx,y:y-13,fill:cssv('--ink-2'),'font-size':'11.5','font-weight':'600','text-anchor':dx<0?'end':'start','font-family':'Source Sans 3, sans-serif','pointer-events':'none'});
+        lt.textContent=i.n; svg.appendChild(lt);
+      }
+    });
+  }
+
+  function renderActs(acts){
+    var box=document.getElementById('acts'); box.textContent='';
+    if(!acts.length){ box.appendChild(el('div','empty','Nothing to recover on these numbers — every item clears your target and wastage is already tight.')); return; }
+    acts.slice(0,8).forEach(function(a,idx){
+      var row=el('div','act');
+      row.appendChild(el('div','rank num', String(idx+1)));
+      var mid=el('div');
+      var h=el('h3'); h.appendChild(document.createTextNode(a.title));
+      var chip=el('span','chip '+QUAD[a.q].cls, QUAD[a.q].label); h.appendChild(chip);
+      mid.appendChild(h); mid.appendChild(el('p',null,a.detail)); row.appendChild(mid);
+      var mon=el('div','money'); mon.appendChild(document.createTextNode('+'+money(a.amount)));
+      var sm=el('small',null,'per month'); mon.appendChild(sm); row.appendChild(mon);
+      box.appendChild(row);
+    });
+  }
+
+  var lastSummary='', lastOpp=0, lastMetrics=null;
+
+  function renderShare(m,acts,total){
+    var lines=[];
+    lines.push('*Menu profit scan*');
+    lines.push('');
+    lines.push('Net revenue: '+money(m.rev)+'/mo');
+    lines.push('Food cost: '+pct(m.fcPct)+' (target '+(Number(state.target)||30)+'%)');
+    lines.push('Gross margin: '+money(m.cmTot)+'/mo');
+    lines.push('Profit after fixed costs: '+money(m.profit)+'/mo');
+    lines.push('');
+    lines.push('*Recoverable: '+money(total)+'/month — '+money(total*12)+' a year*');
+    lines.push('');
+    lines.push('Top moves:');
+    acts.slice(0,4).forEach(function(a,i){ lines.push((i+1)+'. '+a.title+' → +'+money(a.amount)+'/mo'); });
+    lines.push('');
+    lines.push('Estimates from your own prices, plate costs and monthly volumes. GST '+(state.gst?'stripped out of':'not included in')+' menu prices, wastage at '+INR1.format(Number(state.waste)||0)+'%.');
+    lastSummary=lines.join('\n');
+    document.getElementById('shareText').value=lastSummary;
+  }
+
+  function paint(skipRows){
+    var m=compute();
+    var acts=levers(m);
+    var total=acts.reduce(function(a,x){return a+x.amount;},0);
+    lastOpp=total; lastMetrics=m;
+
+    document.getElementById('bigOpp').textContent=money(total);
+    var sub=document.getElementById('bigSub'); sub.textContent='';
+    sub.appendChild(document.createTextNode('That is '));
+    var b=document.createElement('strong'); b.textContent=money(total*12)+' a year'; sub.appendChild(b);
+    sub.appendChild(document.createTextNode(' from '+acts.length+' decisions on '+m.live.length+' items — no new customers, no new spend.'));
+
+    var fc=document.getElementById('tFc'), tgt=Number(state.target)||30;
+    fc.textContent=pct(m.fcPct);
+    fc.className='num '+(m.fcPct>tgt+5?'bad':(m.fcPct>tgt?'warn':'ok'));
+    document.getElementById('tFcHint').textContent = m.fcPct>tgt
+      ? INR1.format(m.fcPct-tgt)+' points over target'
+      : 'Inside your '+tgt+'% target';
+
+    document.getElementById('tRev').textContent=money(m.rev);
+    document.getElementById('tCm').textContent=money(m.cmTot);
+    document.getElementById('tCmHint').textContent=money(m.avgCm)+' average per plate';
+
+    var pr=document.getElementById('tProfit');
+    pr.textContent=money(m.profit);
+    pr.className='num '+(m.profit>0?'ok':'bad');
+    var be = m.avgCm>0 ? (Number(state.fixed)||0)/m.avgCm : 0;
+    document.getElementById('tProfitHint').textContent = be>0
+      ? 'Break-even at '+INR.format(Math.ceil(be/30))+' plates a day'
+      : 'Add fixed costs to see break-even';
+
+    if(!skipRows) renderRows(m);
+    updateComputed(m);
+    renderPlot(m);
+    renderActs(acts);
+    renderShare(m,acts,total);
+
+    var flag=document.getElementById('dataFlag');
+    flag.textContent = state.custom ? 'Your numbers — saved in this browser' : 'Example café loaded — overwrite the rows with your own';
+  }
+
+  /* ---------- wiring ---------- */
+  function bindSetting(id,key,isBool){
+    var e=document.getElementById(id);
+    if(isBool) e.checked=!!state[key]; else e.value=state[key];
+    e.addEventListener(isBool?'change':'input',function(){
+      state[key]= isBool ? e.checked : Number(e.value);
+      state.custom=true; persist(); paint();
+    });
+  }
+  bindSetting('setFixed','fixed'); bindSetting('setWaste','waste');
+  bindSetting('setTarget','target'); bindSetting('setGst','gst',true);
+
+  document.getElementById('addRow').addEventListener('click',function(){
+    state.dishes.push({n:'',p:0,c:0,u:0}); state.custom=true; persist(); paint();
+    var last=document.getElementById('f-n-'+(state.dishes.length-1)); if(last) last.focus();
+  });
+  document.getElementById('resetBtn').addEventListener('click',function(){
+    state={gst:true,waste:8,target:30,fixed:320000,dishes:EXAMPLE.map(function(d){return{n:d.n,p:d.p,c:d.c,u:d.u};}),custom:false};
+    try{ localStorage.removeItem(LS); }catch(e){}
+    document.getElementById('savedToast').hidden=true;
+    bindSetting('setFixed','fixed'); bindSetting('setWaste','waste');
+    bindSetting('setTarget','target'); bindSetting('setGst','gst',true);
+    paint();
+  });
+  document.getElementById('copyBtn').addEventListener('click',function(){
+    var t=document.getElementById('copyToast'), ta=document.getElementById('shareText');
+    function flash(msg){ t.textContent=msg; t.hidden=false; setTimeout(function(){t.hidden=true;},2200); }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(lastSummary).then(function(){flash('Copied');},function(){ ta.focus(); ta.select(); flash('Selected — press Ctrl/⌘+C'); });
+    } else { ta.focus(); ta.select(); flash('Selected — press Ctrl/⌘+C'); }
+  });
+  window.addEventListener('resize',function(){ var t=document.getElementById('tip'); if(t) t.style.opacity='0'; });
+
+  paint();
+
+  /* ---------- pipeline (signed-in viewers) ---------- */
+  (async function(){
+    var db=null, user=null;
+    try { db = await claude.use('db'); } catch(e){}
+    try { user = await claude.use('user'); } catch(e){}
+    if(!db) return;
+    var panel=document.getElementById('pipePanel'); panel.hidden=false;
+    var list=document.getElementById('pipeList');
+    var canWrite = true;
+    try { if(user && user.can) { var c = await user.can('data.write'); if(c===false) canWrite=false; } } catch(e){}
+    if(!canWrite){ document.getElementById('pSave').disabled=true; }
+
+    function paintList(docs){
+      list.textContent='';
+      if(!docs.length){ list.appendChild(el('div','empty','No scans saved yet.')); return; }
+      docs.forEach(function(d){
+        var v=d.data()||{};
+        var row=el('div','pipe-row');
+        var left=el('div');
+        left.appendChild(el('b',null,v.cafe||'Unnamed café'));
+        var meta=el('div','meta', [v.contact||'no contact', v.savedAt?new Date(v.savedAt).toLocaleDateString('en-IN'):'', (v.dishCount||0)+' items', 'food cost '+INR1.format(v.foodCostPct||0)+'%'].filter(Boolean).join(' · '));
+        left.appendChild(meta); row.appendChild(left);
+        row.appendChild(el('div','amt','+'+money(v.monthlyOpportunity||0)+'/mo'));
+        list.appendChild(row);
+      });
+    }
+    var q = db.collection('scans').orderBy('savedAt','desc').limit(50);
+    q.onSnapshot(function(snap){ paintList(snap.docs); }, function(err){
+      list.textContent=''; list.appendChild(el('div','empty','Pipeline unavailable in this view.'));
+      console.warn('db', err && err.code);
+    });
+
+    document.getElementById('pSave').addEventListener('click',async function(){
+      var cafe=document.getElementById('pCafe').value.trim();
+      var contact=document.getElementById('pContact').value.trim();
+      if(!cafe){ document.getElementById('pCafe').focus(); return; }
+      var btn=this; btn.disabled=true; btn.textContent='Saving…';
+      try{
+        await db.collection('scans').add({
+          cafe:cafe, contact:contact, savedAt:new Date().toISOString(),
+          monthlyOpportunity:Math.round(lastOpp),
+          annualOpportunity:Math.round(lastOpp*12),
+          netRevenue:Math.round(lastMetrics.rev),
+          foodCostPct:Number(lastMetrics.fcPct.toFixed(1)),
+          grossMargin:Math.round(lastMetrics.cmTot),
+          profitAfterFixed:Math.round(lastMetrics.profit),
+          dishCount:lastMetrics.live.length,
+          summary:lastSummary
+        });
+        document.getElementById('pCafe').value=''; document.getElementById('pContact').value='';
+        btn.textContent='Saved';
+      } catch(err){
+        btn.textContent = (err&&err.code==='invalid_argument') ? 'Not allowed here' : 'Save failed — try again';
+        console.warn('db write', err && err.code);
+      }
+      setTimeout(function(){ btn.disabled=false; btn.textContent='Save this scan'; },1800);
+    });
+  })();
+})();
+</script>
+
+</body>
+</html>
